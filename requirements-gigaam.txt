@@ -1,0 +1,4 @@
+# Optional quality ASR backend. Install only after the base MVP works.
+# The official v3 repository pulls PyTorch and is intentionally separated from the base lock.
+gigaam[torch] @ git+https://github.com/salute-developers/GigaAM.git@7447938d791c4f3e643386ee22c33777004293a5
+

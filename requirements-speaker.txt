@@ -1,0 +1,2 @@
+# Install torch/torchaudio from the CPU index first (see README).
+speechbrain==1.0.3

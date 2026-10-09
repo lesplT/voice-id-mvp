@@ -1,0 +1,2 @@
+# Browser verification only; not needed to run the application.
+playwright==1.58.0

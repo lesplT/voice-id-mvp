@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice ID · Аудиостудия</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Voice ID — главная"><span class="brand-mark" aria-hidden="true">▥</span><span>voice<span class="brand-light">id</span><small>ЛОКАЛЬНАЯ АУДИОСТУДИЯ</small></span></a>
+    <div class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+    <nav class="tabs" role="tablist" aria-label="Разделы" aria-orientation="vertical">
+      <button id="tab-dialogue" class="tab active" role="tab" aria-selected="true" aria-controls="panel-dialogue" data-tab="dialogue"><span aria-hidden="true">◫</span>Диалог<span class="nav-number">01</span></button>
+      <button id="tab-voices" class="tab" role="tab" aria-selected="false" aria-controls="panel-voices" tabindex="-1" data-tab="voices"><span aria-hidden="true">◉</span>Голоса<span class="nav-number">02</span></button>
+      <button id="tab-transcribe" class="tab" role="tab" aria-selected="false" aria-controls="panel-transcribe" tabindex="-1" data-tab="transcribe"><span aria-hidden="true">≡</span>Расшифровка<span class="nav-number">03</span></button>
+      <button id="tab-dictionary" class="tab" role="tab" aria-selected="false" aria-controls="panel-dictionary" tabindex="-1" data-tab="dictionary"><span aria-hidden="true">▤</span>Словарь<span class="nav-number">04</span></button>
+      <button id="tab-journal" class="tab" role="tab" aria-selected="false" aria-controls="panel-journal" tabindex="-1" data-tab="journal"><span aria-hidden="true">▣</span>Журнал<span class="nav-number">05</span></button>
+    </nav>
+    <div class="sidebar-footer"><span class="privacy-dot"></span><strong>Всё на вашем ноутбуке</strong><p>Записи обрабатываются локально и не отправляются в облако.</p><a href="/docs" target="_blank" rel="noopener">Техническая документация ↗</a></div>
+  </aside>
+  <main class="workspace">
+    <header class="topbar"><span>Ваше рабочее пространство</span><span class="connection" id="connection-status" role="status">Проверяем подключение…</span></header>
+    <section id="panel-dialogue" class="panel" role="tabpanel" aria-labelledby="tab-dialogue">
+      <div class="page-heading"><div><div class="eyebrow">ИЗ ЗАПИСИ — В РАЗГОВОР</div><h1>Диалог по голосам</h1><p>Загрузите разговор. Мы покажем, кто говорил и что сказал.</p></div><span class="outline-pill">Голоса + русский текст</span></div>
+      <div class="work-grid">
+        <form id="dialogue-form" class="card audio-form" data-operation="dialogue">
+          <div class="card-heading"><span class="step">1</span><h2>Запись разговора</h2></div>
+          <label class="upload-zone" for="dialogue-file"><span class="upload-icon" aria-hidden="true">↥</span><strong>Перетащите аудиозапись</strong><span>или выберите файл с ноутбука</span><input id="dialogue-file" name="audio" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm" required><small>MP3, WAV и другие аудиоформаты · до 100 МБ</small></label>
+          <div class="file-preview" hidden><div class="file-info"></div><audio controls preload="metadata" aria-label="Прослушать выбранный диалог"></audio></div>
+          <label class="check-label"><input type="checkbox" name="use_dictionary" checked><span>Использовать словарь<small>Только заданные вами исправления текста</small></span></label>
+          <button class="button primary" type="submit">Разобрать диалог <span aria-hidden="true">→</span></button>
+          <div class="job-status" role="status" aria-live="polite" hidden></div>
+          <div class="hint"><strong>Добавьте голоса сотрудников</strong><p>Покупателей регистрировать не нужно. Незнакомый или неуверенно узнанный голос получит метку «Неопределённый участник», но его текст и исходная запись всё равно сохранятся в журнале.</p></div>
+        </form>
+        <section class="card result-card" aria-labelledby="dialogue-result-title"><div class="result-header"><div><div class="eyebrow">РЕЗУЛЬТАТ</div><h2 id="dialogue-result-title">Разговор по репликам</h2></div><span id="dialogue-count" class="muted"></span></div><div id="dialogue-exports" class="export-bar" hidden></div><div id="dialogue-result" class="result-body"><div class="empty-state"><span class="empty-icon" aria-hidden="true">◫</span><h3>Здесь появится ваш диалог</h3><p>У каждой реплики будут имя говорящего, время и текст. Нажмите на время, чтобы прослушать этот момент.</p></div></div></section>
+      </div>
+    </section>
+    <section id="panel-voices" class="panel" role="tabpanel" aria-labelledby="tab-voices" hidden>
+      <div class="page-heading"><div><div class="eyebrow">ЗНАКОМИМСЯ С УЧАСТНИКАМИ</div><h1>Голоса</h1><p>Добавьте образец голоса или проверьте, кому принадлежит запись.</p></div><button class="button secondary" id="refresh-voices">Обновить список ↻</button></div>
+      <div class="voices-grid">
+        <form id="enroll-form" class="card audio-form" data-operation="enroll"><div class="card-heading"><span class="step">+</span><h2>Добавить голос</h2></div><label class="field">Имя говорящего<input id="speaker-name" name="speaker_id" placeholder="Например, Платон" maxlength="80" required></label><label class="upload-zone compact" for="enroll-file"><span class="upload-icon" aria-hidden="true">◉</span><strong>Образец одного человека</strong><input id="enroll-file" name="audio" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" required><small>Желательно 20–30 секунд чистой речи</small></label><div class="file-preview" hidden><div class="file-info"></div><audio controls preload="metadata" aria-label="Прослушать образец голоса"></audio></div><button class="button primary" type="submit">Сохранить голос</button><div class="job-status" role="status" aria-live="polite" hidden></div><div class="hint"><p>Новая запись с тем же именем дополнит его образцы. Не загружайте разговор нескольких людей как один голос.</p></div></form>
+        <section class="card"><div class="card-heading"><span class="step">✓</span><h2>Знакомые голоса</h2></div><div id="speakers-list" role="status">Загружаем список…</div></section>
+        <form id="identify-form" class="card audio-form" data-operation="identify"><div class="card-heading"><span class="step">?</span><h2>Чей это голос?</h2></div><p class="muted">Проверка записи одного человека, без расшифровки.</p><label class="upload-zone compact" for="identify-file"><strong>Выберите запись для проверки</strong><input id="identify-file" name="audio" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" required></label><div class="file-preview" hidden><div class="file-info"></div><audio controls preload="metadata" aria-label="Прослушать проверяемый голос"></audio></div><button class="button primary" type="submit">Определить говорящего</button><div class="job-status" role="status" aria-live="polite" hidden></div><div id="identify-result" class="identity-result" role="status"></div></form>
+      </div>
+    </section>
+    <section id="panel-transcribe" class="panel" role="tabpanel" aria-labelledby="tab-transcribe" hidden>
+      <div class="page-heading"><div><div class="eyebrow">СЛУШАЕМ И ЗАПИСЫВАЕМ</div><h1>Расшифровка</h1><p>Переведите аудиозапись в текст, без разделения по говорящим.</p></div><span class="outline-pill">Русская речь</span></div>
+      <div class="work-grid"><form id="transcribe-form" class="card audio-form" data-operation="transcribe"><div class="card-heading"><span class="step">1</span><h2>Аудиозапись</h2></div><label class="upload-zone" for="transcribe-file"><span class="upload-icon" aria-hidden="true">≡</span><strong>Выберите файл для расшифровки</strong><input id="transcribe-file" name="audio" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm" required><small>До 100 МБ · обработка на ноутбуке</small></label><div class="file-preview" hidden><div class="file-info"></div><audio controls preload="metadata" aria-label="Прослушать расшифровываемую запись"></audio></div><label class="check-label"><input type="checkbox" name="use_dictionary" checked><span>Использовать словарь<small>Исходный текст тоже будет доступен</small></span></label><button class="button primary" type="submit">Расшифровать запись →</button><div class="job-status" role="status" aria-live="polite" hidden></div><div class="hint"><p>Для разговора нескольких людей удобнее вкладка «Диалог»: там текст будет разделён на реплики.</p></div></form><section class="card result-card"><div class="result-header"><div><div class="eyebrow">РЕЗУЛЬТАТ</div><h2>Текст записи</h2></div></div><div id="transcribe-exports" class="export-bar" hidden></div><div id="transcribe-result" class="result-body"><div class="empty-state"><span class="empty-icon" aria-hidden="true">≡</span><h3>Ваш текст — здесь</h3><p>После обработки вы сможете прочитать, скопировать и сохранить расшифровку.</p></div></div></section></div>
+    </section>
+    <section id="panel-dictionary" class="panel" role="tabpanel" aria-labelledby="tab-dictionary" hidden>
+      <div class="page-heading"><div><div class="eyebrow">СЛОВА ВАШЕЙ ПЕКАРНИ</div><h1>Словарь</h1><p>Названия, варианты ошибок и примеры произношения — в одном месте.</p></div><button id="new-word" class="button secondary">+ Новое слово</button></div>
+      <div class="dictionary-notice"><span aria-hidden="true">i</span><p>Аудиопримеры сохраняются для прослушивания и проверки, но <strong>не обучают модель автоматически</strong>. Исправления работают только для вариантов ошибок, которые вы укажете. Исходная расшифровка всегда сохраняется.</p></div>
+      <div class="work-grid dictionary-grid"><div><form id="word-form" class="card"><h2 id="word-form-title">Добавить слово</h2><label class="field">Правильное написание<input id="word-name" placeholder="Например, чиабатта" maxlength="120" required></label><label class="field">Категория <span class="optional">необязательно</span><input id="word-category" placeholder="Выпечка" maxlength="50"></label><label class="field">Как модель пишет ошибочно<textarea id="word-aliases" placeholder="чааббат&#10;чабатта" rows="3" maxlength="3600"></textarea><small>Каждый вариант — с новой строки. Исправляем только эти варианты, не похожие слова.</small></label><label class="field">Заметка <span class="optional">необязательно</span><textarea id="word-description" placeholder="Описание или пояснение" maxlength="1000" rows="2"></textarea></label><label class="check-label"><input id="word-active" type="checkbox" checked><span>Исправления включены</span></label><button class="button primary" type="submit">Сохранить слово</button><div id="word-status" role="status" aria-live="polite" class="job-status" hidden></div></form><form id="example-form" class="card example-form" hidden><h2>Пример произношения</h2><p id="example-word" class="muted"></p><label class="field">Что произносится в записи<input id="example-transcript" maxlength="1000" placeholder="Правильный текст примера"></label><label class="field">Аудиофайл<input id="example-file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" required><small>0,35–30 секунд, один пример · до 15 МБ</small></label><button class="button secondary" type="submit">Добавить аудиопример</button><div id="example-status" role="status" aria-live="polite" class="job-status" hidden></div></form></div><section class="card dictionary-list-card"><div class="result-header"><h2>Ваши слова</h2><span id="dictionary-count" class="muted"></span></div><label class="search-field"><span aria-hidden="true">⌕</span><input id="dictionary-search" type="search" placeholder="Найти слово или категорию" aria-label="Поиск в словаре"></label><div id="dictionary-list">Загружаем словарь…</div></section></div>
+    </section>
+    <section id="panel-journal" class="panel" role="tabpanel" aria-labelledby="tab-journal" hidden>
+      <div class="page-heading"><div><div class="eyebrow">ИСТОРИЯ РАЗГОВОРОВ</div><h1>Журнал</h1><p>Диалоги и расшифровки сохраняются автоматически — до ручного удаления.</p></div><button id="refresh-journal" class="button secondary">Обновить ↻</button></div>
+      <div class="dictionary-notice"><span aria-hidden="true">i</span><p>Сохраняем исходное аудио и весь результат, в том числе речь неопределённых участников. Ошибка обработки не удаляет запись. Новые загрузки сохраняются с момента добавления журнала; старые результаты автоматически не восстановить. Журнал занимает место на диске и может содержать личные сведения.</p></div>
+      <div class="work-grid journal-grid">
+        <section class="card"><h2>Сохранённые записи</h2><p id="journal-count" class="muted" role="status"></p><label class="search-field"><input id="journal-search" type="search" maxlength="200" placeholder="Поиск по файлу или тексту" aria-label="Поиск в журнале"></label><div id="journal-list" role="status">Загружаем журнал…</div><div id="journal-pages" class="export-bar"></div></section>
+        <section class="card result-card"><h2 id="journal-title">Выберите запись</h2><p id="journal-meta" class="muted"></p><audio id="journal-player" controls preload="metadata" aria-label="Прослушать сохранённый разговор" hidden></audio><div id="journal-actions" class="export-bar" hidden></div><div id="journal-exports" class="export-bar" hidden></div><div id="journal-result" class="result-body"><p class="muted">Выберите разговор слева: здесь появятся запись, реплики и кнопки сохранения.</p></div></section>
+      </div>
+    </section>
+    <footer class="page-footer"><span>Voice ID · Локальная студия</span><span>Короткая реплика может остаться неузнанной. Это не ошибка текста.</span></footer>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

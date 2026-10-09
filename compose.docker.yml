@@ -1,0 +1,94 @@
+name: voice-id-mvp-docker
+x-runtime: &runtime
+  image: voice-id-mvp:local
+  build:
+    context: .
+    target: runtime
+  init: true
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  volumes:
+    - ./models:/app/models
+  environment: &environment
+    ASR_ENGINE: gigaam
+    SPEAKER_ENGINE: ecapa
+    ASR_FALLBACK_TO_VOSK: "true"
+    QDRANT_URL: http://qdrant:6333
+    QDRANT_COLLECTION: voice_references_ecapa_v1
+    ENROLLMENT_SERVICE_URL: http://enrollment:8001
+    IDENTIFICATION_SERVICE_URL: http://identification:8002
+    TRANSCRIPTION_SERVICE_URL: http://transcription:8003
+    DICTIONARY_PATH: /app/data/dictionary
+    JOURNAL_PATH: /app/data/journal
+  depends_on:
+    models:
+      condition: service_completed_successfully
+  healthcheck: &health
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 15s
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.6
+    restart: unless-stopped
+    volumes:
+      - ./data/docker/qdrant:/qdrant/storage
+    # No host port: the vector database is accessible only inside Compose.
+
+  models:
+    <<: *runtime
+    restart: "no"
+    command: ["python", "scripts/docker_bootstrap.py"]
+    volumes:
+      - ./models:/app/models
+      - ./data/docker/model-cache:/app/data
+    depends_on:
+      qdrant:
+        condition: service_started
+    healthcheck:
+      disable: true
+
+  enrollment:
+    <<: *runtime
+    command: ["python", "-m", "uvicorn", "voice_id_mvp.services.enrollment_app:app", "--host", "0.0.0.0", "--port", "8001"]
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+
+  identification:
+    <<: *runtime
+    command: ["python", "-m", "uvicorn", "voice_id_mvp.services.identification_app:app", "--host", "0.0.0.0", "--port", "8002"]
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=3)"]
+
+  transcription:
+    <<: *runtime
+    command: ["python", "-m", "uvicorn", "voice_id_mvp.services.transcription_app:app", "--host", "0.0.0.0", "--port", "8003"]
+    volumes:
+      - ./models:/app/models
+      - ./data/docker/workspace:/app/data
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health', timeout=3)"]
+
+  workspace:
+    <<: *runtime
+    ports:
+      - "127.0.0.1:${VOICE_ID_PORT:-18000}:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data/docker/workspace:/app/data
+    depends_on:
+      enrollment:
+        condition: service_healthy
+      identification:
+        condition: service_healthy
+      transcription:
+        condition: service_healthy

@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!requirements-docker.txt
+!pytest.ini
+!voice_id_mvp/
+!voice_id_mvp/**
+!scripts/
+!scripts/**
+!tests/
+!tests/**
+**/__pycache__/**
+**/*.pyc

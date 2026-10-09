@@ -1,0 +1,14 @@
+# Linux CPU runtime. GigaAM requires NumPy 2; Windows freeze is not a Linux lock.
+fastapi==0.115.12
+uvicorn==0.34.0
+python-multipart==0.0.20
+pydantic-settings==2.8.1
+qdrant-client==1.13.3
+filelock==3.18.0
+vosk==0.3.45
+numpy==2.2.6
+httpx==0.28.1
+imageio-ffmpeg==0.6.0
+speechbrain==1.0.3
+pytest==8.3.5
+gigaam @ https://codeload.github.com/salute-developers/GigaAM/tar.gz/7447938d791c4f3e643386ee22c33777004293a5
