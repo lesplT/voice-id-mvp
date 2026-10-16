@@ -5,7 +5,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from voice_id_mvp.repository import VoiceRepository
+from voice_id_mvp.storage.voice_repository import VoiceRepository
 from qdrant_client.http import models
 
 data = json.load(sys.stdin)

@@ -2,6 +2,7 @@
 !Dockerfile
 !requirements-docker.txt
 !pytest.ini
+!docker-compose.yml
 !voice_id_mvp/
 !voice_id_mvp/**
 !scripts/

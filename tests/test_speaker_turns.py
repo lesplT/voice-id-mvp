@@ -1,4 +1,4 @@
-from voice_id_mvp.speaker_turns import stable_boundaries
+from voice_id_mvp.recognition.speaker_turns import stable_boundaries
 
 def test_stable_acoustic_change():
     rows=[(0.4,'a'),(.6,'a'),(.8,'a'),(1.0,None),(1.2,'b'),(1.4,'b')]

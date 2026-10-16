@@ -2,17 +2,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .audio import wav_duration
-from .config import get_settings
-from .embeddings import VoskSpeakerEmbedder, normalized_centroid, get_embedder
-from .repository import VoiceRepository
-from .segmentation import has_speech
+from voice_id_mvp.audio.processing import wav_duration
+from voice_id_mvp.core.config import get_settings
+from voice_id_mvp.recognition.embeddings import VoskSpeakerEmbedder, normalized_centroid, get_embedder
+from voice_id_mvp.storage.voice_repository import VoiceRepository
+from voice_id_mvp.audio.segmentation import has_speech
 
 
 UNKNOWN = "UNKNOWN"
 
 
 def aggregate_hits(hits: list[dict]) -> list[dict]:
+    """Purpose:
+        Rank speakers using their best reference scores without counting duplicate centroids.
+
+    Ingress:
+        Vector-search hits containing speaker IDs, kinds, and cosine scores.
+
+    Egress:
+        Candidate dictionaries sorted by mean top-three reference score.
+    """
     grouped: dict[str, list[float]] = {}
     for hit in hits:
         # Centroids duplicate reference evidence; rank by reference points only.
@@ -34,6 +43,15 @@ def aggregate_hits(hits: list[dict]) -> list[dict]:
 def decide_identity(
     candidates: list[dict], threshold: float, margin: float
 ) -> dict:
+    """Purpose:
+        Accept a candidate only when similarity and separation thresholds are satisfied.
+
+    Ingress:
+        Ranked speaker candidates, minimum similarity, and minimum runner-up margin.
+
+    Egress:
+        A speaker decision or UNKNOWN with an explanatory reason and score.
+    """
     if not candidates:
         return {"speaker_id": UNKNOWN, "reason": "no_embedding", "score": None}
     best = candidates[0]
@@ -63,6 +81,15 @@ def identify_wav(
     embedder: VoskSpeakerEmbedder | None = None,
     top_k: int | None = None,
 ) -> dict:
+    """Purpose:
+        Identify a speaker conservatively, rejecting insufficient speech before embedding.
+
+    Ingress:
+        A normalized WAV path and optional repository, embedder, and search-limit overrides.
+
+    Egress:
+        A decision dictionary with duration, ranked candidates, and embedding metadata.
+    """
     settings = get_settings()
     duration = wav_duration(wav_path)
     if duration < settings.voice_id_min_seconds:

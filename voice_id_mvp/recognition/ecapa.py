@@ -3,16 +3,34 @@ from pathlib import Path
 import threading
 import wave
 import numpy as np
-from .config import get_settings
-from .embeddings import EmbeddingError, l2_normalize
+from voice_id_mvp.core.config import get_settings
+from voice_id_mvp.recognition.embeddings import EmbeddingError, l2_normalize
 
 
 class EcapaSpeakerEmbedder:
+    """Purpose:
+        Extract normalized speaker embeddings using pretrained SpeechBrain ECAPA on CPU.
+
+    Ingress:
+        Normalized audio samples or WAV paths and the configured checkpoint.
+
+    Egress:
+        192-dimensional L2-normalized speaker vectors; no model training is performed.
+    """
     _modules = None
     _lock = threading.RLock()
 
     @classmethod
     def _load(cls):
+        """Purpose:
+            Create the shared ECAPA feature pipeline and load pretrained weights once.
+
+        Ingress:
+            The configured ECAPA checkpoint and available torch/torchaudio libraries.
+
+        Egress:
+            Cached feature extraction, normalization, and evaluation-mode encoder modules.
+        """
         with cls._lock:
             if cls._modules is None:
                 import torch, torchaudio
@@ -36,6 +54,15 @@ class EcapaSpeakerEmbedder:
             return cls._modules
 
     def extract_samples(self, samples: np.ndarray) -> list[float]:
+        """Purpose:
+            Encode one supported speech interval into a normalized voice vector.
+
+        Ingress:
+            A mono 16 kHz float sample array containing at least 0.35 seconds.
+
+        Egress:
+            A normalized 192-value embedding; raises EmbeddingError if the interval is too short.
+        """
         import torch
         if len(samples) < 5600:
             raise EmbeddingError("ECAPA needs at least 0.35 seconds")
@@ -47,6 +74,15 @@ class EcapaSpeakerEmbedder:
         return l2_normalize(vector)
 
     def extract_all(self, wav_path: Path) -> list[list[float]]:
+        """Purpose:
+            Bound memory use by encoding a normalized WAV in independent chunks.
+
+        Ingress:
+            A mono 16 kHz PCM16 WAV path.
+
+        Egress:
+            A list of normalized embeddings for chunks long enough to encode.
+        """
         with wave.open(str(wav_path), "rb") as wav:
             if wav.getframerate() != 16000 or wav.getnchannels() != 1 or wav.getsampwidth() != 2:
                 raise EmbeddingError("Expected 16 kHz mono PCM16 WAV")

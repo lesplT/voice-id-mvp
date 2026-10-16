@@ -7,8 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from voice_id_mvp.audio import normalize_audio
-from voice_id_mvp.asr import GigaAmAsr
+from voice_id_mvp.audio.processing import normalize_audio
+from voice_id_mvp.recognition.asr import GigaAmAsr
 
 started = time.monotonic()
 report = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "engine": "gigaam"}

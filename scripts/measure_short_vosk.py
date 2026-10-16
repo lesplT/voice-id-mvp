@@ -6,9 +6,9 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from voice_id_mvp.audio import normalize_audio, write_wav_slice, wav_duration
-from voice_id_mvp.embeddings import VoskSpeakerEmbedder, normalized_centroid
-from voice_id_mvp.segmentation import detect_speech_segments
+from voice_id_mvp.audio.processing import normalize_audio, write_wav_slice, wav_duration
+from voice_id_mvp.recognition.embeddings import VoskSpeakerEmbedder, normalized_centroid
+from voice_id_mvp.audio.segmentation import detect_speech_segments
 
 folder = ROOT / "data/short-evaluation"
 folder.mkdir(parents=True, exist_ok=True)

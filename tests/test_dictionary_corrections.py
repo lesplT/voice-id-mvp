@@ -1,5 +1,5 @@
 import pytest
-from voice_id_mvp.dictionary_corrections import correct_text,apply_dictionary_result
+from voice_id_mvp.application.dictionary_corrections import correct_text,apply_dictionary_result
 
 WORDS=[{'id':'one','word':'чиабатта','aliases':['чааббат','чабатта'],'active':True}]
 

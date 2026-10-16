@@ -2,7 +2,7 @@ import sys, json, tempfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import httpx
-from voice_id_mvp.audio import write_wav_slice, normalized_upload
+from voice_id_mvp.audio.processing import write_wav_slice, normalized_upload
 ROOT=Path(__file__).resolve().parents[1]
 rows=[]
 with tempfile.TemporaryDirectory(prefix='short-voice-check-') as tmp, httpx.Client(timeout=120) as client:

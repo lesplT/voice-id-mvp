@@ -1,5 +1,5 @@
-from voice_id_mvp.identification import aggregate_hits, decide_identity
-from voice_id_mvp.dialogue import merge_dialogue_segments
+from voice_id_mvp.recognition.identification import aggregate_hits, decide_identity
+from voice_id_mvp.application.dialogue import merge_dialogue_segments
 
 def test_one_accidental_high_match_does_not_win():
     hits = [{"speaker_id": "outlier", "score": x} for x in [.99, .5, .4]]

@@ -2,12 +2,20 @@
 import wave
 from pathlib import Path
 import numpy as np
-from .ecapa import EcapaSpeakerEmbedder
-from .segmentation import TimeSegment
+from voice_id_mvp.recognition.ecapa import EcapaSpeakerEmbedder
+from voice_id_mvp.audio.segmentation import TimeSegment
 
 
 def stable_boundaries(observations: list[tuple[float, str | None]]) -> list[float]:
-    """Require two consecutive confident windows for each new speaker."""
+    """Purpose:
+        Propose speaker-change times only after two consecutive confident observations.
+
+    Ingress:
+        Time/label observations; None denotes an uncertain acoustic window.
+
+    Egress:
+        Boundary timestamps between stable known-speaker runs; text is never used.
+    """
     current = None
     last_time = None
     pending = None
@@ -35,6 +43,15 @@ def stable_boundaries(observations: list[tuple[float, str | None]]) -> list[floa
 
 
 def split_speaker_turns(wav_path: Path, segments: list[TimeSegment], references: dict) -> list[TimeSegment]:
+    """Purpose:
+        Split detected speech using acoustic reference comparisons, never transcript meaning.
+
+    Ingress:
+        A normalized WAV path, speech intervals, and registered reference vectors.
+
+    Egress:
+        TimeSegment intervals with conservative speaker-change proposals.
+    """
     if len(references) < 2:
         return segments
     with wave.open(str(wav_path), "rb") as wav:
@@ -45,6 +62,15 @@ def split_speaker_turns(wav_path: Path, segments: list[TimeSegment], references:
     embedder = EcapaSpeakerEmbedder()
     def scores(vector):
         # Same top-three aggregation as identification.
+        """Purpose:
+            Compare one voice vector with each registered speaker's strongest references.
+
+        Ingress:
+            An embedding and the enclosing per-speaker reference matrices.
+
+        Egress:
+            A NumPy array of top-three mean similarity scores.
+        """
         return np.asarray([np.sort(matrix @ vector)[-3:].mean() for matrix in matrices])
     output = []
     for segment in segments:

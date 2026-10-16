@@ -29,4 +29,4 @@ if (Test-Path $State) {
         }
     }
 }
-docker compose stop qdrant *> $null
+docker compose --profile native stop qdrant-native *> $null

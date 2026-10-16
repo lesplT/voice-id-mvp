@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright, expect
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from voice_id_mvp.audio import write_wav_slice
+from voice_id_mvp.audio.processing import write_wav_slice
 
 output = ROOT / 'data/docker-check'
 output.mkdir(exist_ok=True)
@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='docker-ui-check-') as temporary:
                 page.request.delete('http://127.0.0.1:18000/api/journal/' + recording)
             if enrolled:
                 command = f"import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8001/speakers/{speaker}', method='DELETE'))"
-                subprocess.run(['docker','compose','-f','compose.docker.yml','exec','-T','enrollment','python','-c',command], cwd=ROOT, check=True)
+                subprocess.run(['docker','compose','exec','-T','enrollment','python','-c',command], cwd=ROOT, check=True)
             browser.close()
 report['status'] = 'passed'
 (output / 'browser-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')

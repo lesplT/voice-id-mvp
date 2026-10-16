@@ -17,4 +17,5 @@ CMD ["python", "-m", "uvicorn", "voice_id_mvp.services.workspace_app:app", "--ho
 FROM runtime AS test
 COPY --chown=voiceid:voiceid tests /app/tests
 COPY --chown=voiceid:voiceid pytest.ini /app/
+COPY --chown=voiceid:voiceid docker-compose.yml /app/
 CMD ["python", "-m", "pytest", "-q"]

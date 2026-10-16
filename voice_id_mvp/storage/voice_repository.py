@@ -10,18 +10,45 @@ from filelock import FileLock
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-from .config import get_settings
+from voice_id_mvp.core.config import get_settings
 
 
 VECTOR_SIZE = 128
 
 
 class VoiceRepository:
+    """Purpose:
+        Store and search speaker references and centroids in Qdrant.
+
+    Ingress:
+        Configured server/embedded storage settings and normalized speaker embeddings.
+
+    Egress:
+        Persistent enrollment records, ranked search hits, and registered-speaker summaries.
+    """
     def __init__(self) -> None:
+        """Purpose:
+            Bind Qdrant operations to the current application settings.
+
+        Ingress:
+            No arguments; process-level settings provide storage configuration.
+
+        Egress:
+            A repository adapter; no model is loaded during construction.
+        """
         self.settings = get_settings()
 
     @contextmanager
     def _client(self) -> Iterator[QdrantClient]:
+        """Purpose:
+            Provide a server client or a serialized embedded Qdrant connection.
+
+        Ingress:
+            Qdrant URL/local path and connection settings.
+
+        Egress:
+            Yields a client and always closes it; embedded access is protected by a file lock.
+        """
         url = self.settings.qdrant_url.strip()
         if url and url.lower() not in {"local", "embedded", "none"}:
             client = QdrantClient(url=url, timeout=15, check_compatibility=False)
@@ -42,6 +69,15 @@ class VoiceRepository:
                 client.close()
 
     def ensure_collection(self) -> None:
+        """Purpose:
+            Create the active collection or verify its vector dimension without overwriting data.
+
+        Ingress:
+            The selected speaker engine and collection name.
+
+        Egress:
+            None; raises ValueError if existing vectors use an incompatible dimension.
+        """
         with self._client() as client:
             expected_size = 192 if self.settings.speaker_engine == "ecapa" else VECTOR_SIZE
             if not client.collection_exists(self.settings.qdrant_collection):
@@ -62,6 +98,15 @@ class VoiceRepository:
         centroid: list[float],
         source_name: str,
     ) -> str:
+        """Purpose:
+            Persist individual references and a centroid for one enrollment session.
+
+        Ingress:
+            Speaker ID, normalized embeddings, centroid, and source filename.
+
+        Egress:
+            The generated enrollment identifier; existing sessions are retained.
+        """
         self.ensure_collection()
         enrollment_id = uuid4().hex
         now = datetime.now(timezone.utc).isoformat()
@@ -103,6 +148,15 @@ class VoiceRepository:
         return enrollment_id
 
     def search(self, vector: list[float], limit: int) -> list[dict]:
+        """Purpose:
+            Search reference vectors only so centroids do not duplicate identity evidence.
+
+        Ingress:
+            A normalized query vector and maximum hit count.
+
+        Egress:
+            Reference-hit dictionaries containing speaker IDs, enrollment IDs, and similarity scores.
+        """
         self.ensure_collection()
         with self._client() as client:
             response = client.query_points(
@@ -126,6 +180,15 @@ class VoiceRepository:
         ]
 
     def list_speakers(self) -> list[dict]:
+        """Purpose:
+            Summarize registered speakers across all active collection points.
+
+        Ingress:
+            The configured Qdrant collection.
+
+        Egress:
+            Sorted speaker dictionaries with reference, centroid, and enrollment counts.
+        """
         self.ensure_collection()
         offset = None
         stats: dict[str, dict] = {}
@@ -158,6 +221,15 @@ class VoiceRepository:
         ]
 
     def reference_vectors(self) -> dict[str, list[list[float]]]:
+        """Purpose:
+            Group reference vectors for acoustic speaker-change proposals.
+
+        Ingress:
+            The active Qdrant collection.
+
+        Egress:
+            A mapping from speaker IDs to their normalized reference vectors.
+        """
         self.ensure_collection()
         result: dict[str, list[list[float]]] = {}
         offset = None
@@ -174,6 +246,15 @@ class VoiceRepository:
         return result
 
     def delete_speaker(self, speaker_id: str) -> None:
+        """Purpose:
+            Remove points belonging only to an explicitly selected speaker.
+
+        Ingress:
+            A speaker identifier.
+
+        Egress:
+            None; matching reference/centroid points are deleted from the active collection.
+        """
         self.ensure_collection()
         selector = models.FilterSelector(
             filter=models.Filter(

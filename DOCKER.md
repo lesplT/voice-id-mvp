@@ -7,13 +7,18 @@
 ```powershell
 git clone https://github.com/lesplT/voice-id-mvp.git
 cd voice-id-mvp
-docker compose -f compose.docker.yml up -d --build --wait --wait-timeout 1800
+docker compose up -d --build --wait --wait-timeout 1800
 ```
 
 Откройте **http://127.0.0.1:18000/**. Приватный репозиторий требует входа в GitHub.
 Первый запуск скачивает модели; это не обучение с нуля и может занять несколько минут.
 Модели не входят в GitHub и в образ. Если папка `models` уже содержит рабочие веса,
 инициализация использует их повторно, проверяя ECAPA и загружая GigaAM.
+
+Используется один `docker-compose.yml`: обычный `docker compose up` поднимает весь проект.
+Дополнительный профиль `native` нужен только Windows-скриптам: `docker compose --profile native up -d qdrant-native`
+поднимает отдельный Qdrant на localhost:6333, не затрагивая базу полного Docker-стека.
+Имя Compose-проекта и папки `data/docker` сохранены; перенос данных из-за объединения не требуется.
 
 Структура: отдельные workspace, enrollment, identification и transcription,
 Qdrant и завершающийся после подготовки сервис models. Workspace ждёт готовности
@@ -37,10 +42,10 @@ Native-данные в `data/journal`, `data/dictionary`, `data/qdrant_local` н
 Docker использует отдельную копию. Последующие изменения в двух версиях не синхронизируются.
 
 ```powershell
-docker compose -f compose.docker.yml ps
-docker compose -f compose.docker.yml logs --tail 80 models workspace transcription
-docker compose -f compose.docker.yml stop
-docker compose -f compose.docker.yml start --wait
+docker compose ps
+docker compose logs --tail 80 models workspace transcription
+docker compose stop
+docker compose start --wait
 ```
 
 `stop` сохраняет контейнеры и данные. `down` удаляет контейнеры/сеть, но перечисленные
@@ -59,8 +64,8 @@ docker compose -f compose.docker.yml start --wait
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\prepare_docker_data.py
-docker compose -f compose.docker.yml up -d --build --wait --wait-timeout 1800
-Get-Content data\docker\voice-migration.json -Raw | docker compose -f compose.docker.yml exec -T enrollment python scripts/docker_import_voices.py
+docker compose up -d --build --wait --wait-timeout 1800
+Get-Content data\docker\voice-migration.json -Raw | docker compose exec -T enrollment python scripts/docker_import_voices.py
 ```
 
 Скрипт делает SQLite-снимки журнала/словаря, копирует аудио и экспортирует голосовые
@@ -73,7 +78,7 @@ Get-Content data\docker\voice-migration.json -Raw | docker compose -f compose.do
 ## Проверки
 
 ```powershell
-docker compose -f compose.docker.yml config --quiet
+docker compose config --quiet
 docker build --target test -t voice-id-mvp:test .
 docker run --rm voice-id-mvp:test
 ```

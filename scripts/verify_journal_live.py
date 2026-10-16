@@ -14,7 +14,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from voice_id_mvp.audio import write_wav_slice
+from voice_id_mvp.audio.processing import write_wav_slice
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--base-url', default='http://127.0.0.1:8000')

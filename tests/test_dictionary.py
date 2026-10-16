@@ -1,7 +1,7 @@
 import wave
 import pytest
 from fastapi.testclient import TestClient
-from voice_id_mvp.dictionary import DictionaryStore, DictionaryError, WordInput
+from voice_id_mvp.storage.dictionary_store import DictionaryStore, DictionaryError, WordInput
 from voice_id_mvp.services import workspace_app as module
 
 

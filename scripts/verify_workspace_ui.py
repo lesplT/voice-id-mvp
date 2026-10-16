@@ -31,7 +31,7 @@ from playwright.sync_api import sync_playwright,expect
 with tempfile.TemporaryDirectory(prefix='voice-ui-verification-') as temporary:
     os.environ['DICTIONARY_PATH']=str(Path(temporary)/'dictionary')
     os.environ['JOURNAL_PATH']=str(Path(temporary)/'journal')
-    from voice_id_mvp.audio import write_wav_slice
+    from voice_id_mvp.audio.processing import write_wav_slice
     clip=Path(temporary)/'example.wav'
     write_wav_slice(ROOT/'data/synthetic_russian_tts.wav',clip,1,4)
     with socket.socket() as listener:

@@ -8,20 +8,47 @@ import threading
 import wave
 from pathlib import Path
 
-from .config import get_settings
-from .audio import wav_duration, write_wav_slice
+from voice_id_mvp.core.config import get_settings
+from voice_id_mvp.audio.processing import wav_duration, write_wav_slice
 
 
 class AsrUnavailable(RuntimeError):
+    """Purpose:
+        Represent a missing or failed speech-recognition backend.
+
+    Ingress:
+        A descriptive backend failure message.
+
+    Egress:
+        An exception used by the configured fallback policy.
+    """
     pass
 
 
 class VoskAsr:
+    """Purpose:
+        Transcribe Russian speech using a cached pretrained Vosk model.
+
+    Ingress:
+        Normalized mono PCM16 WAV files and the configured Vosk model directory.
+
+    Egress:
+        Transcription dictionaries with engine, text, and word timing metadata.
+    """
     _model = None
     _lock = threading.Lock()
 
     @classmethod
     def _get_model(cls):
+        """Purpose:
+            Load the shared Vosk model once under a thread lock.
+
+        Ingress:
+            The Vosk ASR model path from application settings.
+
+        Egress:
+            The cached Vosk Model; raises AsrUnavailable if model files are missing.
+        """
         if cls._model is None:
             with cls._lock:
                 if cls._model is None:
@@ -34,6 +61,15 @@ class VoskAsr:
         return cls._model
 
     def transcribe(self, wav_path: Path) -> dict:
+        """Purpose:
+            Decode a WAV recording incrementally with Vosk.
+
+        Ingress:
+            A normalized WAV path.
+
+        Egress:
+            A dictionary containing engine='vosk', recognized text, and word metadata.
+        """
         from vosk import KaldiRecognizer
 
         words: list[dict] = []
@@ -52,6 +88,15 @@ class VoskAsr:
 
     @staticmethod
     def _consume(raw: str, texts: list[str], words: list[dict]) -> None:
+        """Purpose:
+            Collect text and words from one Vosk decoder result.
+
+        Ingress:
+            Raw Vosk JSON and mutable text/word accumulator lists.
+
+        Egress:
+            None; recognized fragments and word metadata are appended in place.
+        """
         data = json.loads(raw)
         if data.get("text"):
             texts.append(data["text"])
@@ -59,11 +104,29 @@ class VoskAsr:
 
 
 class GigaAmAsr:
+    """Purpose:
+        Transcribe Russian speech with pretrained GigaAM v3 on CPU.
+
+    Ingress:
+        Normalized WAV recordings and configured model/cache settings.
+
+    Egress:
+        GigaAM transcription dictionaries; backend failures raise AsrUnavailable.
+    """
     _model = None
     _lock = threading.Lock()
 
     @classmethod
     def _get_model(cls):
+        """Purpose:
+            Load and cache the configured GigaAM model without training.
+
+        Ingress:
+            Model name, cache directory, and FFmpeg availability from the environment.
+
+        Egress:
+            The shared CPU model instance; missing dependencies raise AsrUnavailable.
+        """
         if cls._model is None:
             with cls._lock:
                 if cls._model is None:
@@ -94,6 +157,15 @@ class GigaAmAsr:
         return cls._model
 
     def transcribe(self, wav_path: Path) -> dict:
+        """Purpose:
+            Transcribe a recording while respecting the upstream short-form duration limit.
+
+        Ingress:
+            A normalized WAV path, potentially longer than one decoding window.
+
+        Egress:
+            A dictionary containing engine='gigaam', joined text, and an empty words list.
+        """
         try:
             model = self._get_model()
             duration = wav_duration(wav_path)
@@ -118,6 +190,15 @@ class GigaAmAsr:
 
 
 def transcribe_wav(wav_path: Path) -> dict:
+    """Purpose:
+        Select the configured ASR backend and apply the explicit Vosk fallback policy.
+
+    Ingress:
+        A normalized WAV path and ASR settings.
+
+    Egress:
+        A transcription dictionary, including fallback_reason when applicable; raises on unsupported engines.
+    """
     settings = get_settings()
     engine = settings.asr_engine.lower()
     if engine == "vosk":

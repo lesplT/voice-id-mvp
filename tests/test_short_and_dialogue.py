@@ -1,9 +1,9 @@
 import wave
 
-from voice_id_mvp.dialogue import merge_dialogue_segments
-from voice_id_mvp.identification import identify_wav
-from voice_id_mvp.segmentation import detect_speech_segments
-from voice_id_mvp.audio import write_wav_slice, wav_duration
+from voice_id_mvp.application.dialogue import merge_dialogue_segments
+from voice_id_mvp.recognition.identification import identify_wav
+from voice_id_mvp.audio.segmentation import detect_speech_segments
+from voice_id_mvp.audio.processing import write_wav_slice, wav_duration
 
 
 def test_too_short_does_not_call_models(tmp_path) -> None:

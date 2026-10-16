@@ -3,7 +3,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 from voice_id_mvp.services import workspace_app as module
-from voice_id_mvp.workspace_jobs import JobManager, QueueFull
+from voice_id_mvp.application.workspace_jobs import JobManager, QueueFull
 
 
 def test_queue_and_failure():
@@ -27,7 +27,7 @@ def test_queue_and_failure():
 
 
 def test_gateway_contract(monkeypatch,tmp_path):
-    from voice_id_mvp.dictionary import DictionaryStore
+    from voice_id_mvp.storage.dictionary_store import DictionaryStore
     monkeypatch.setattr(module,'dictionary_store',lambda:DictionaryStore(tmp_path))
     monkeypatch.setattr(module,'service_request',lambda *a,**k:{'text':'Русский текст'})
     with TestClient(module.app) as client:

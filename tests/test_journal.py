@@ -2,7 +2,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from voice_id_mvp.journal import JournalStore, JournalBusy
+from voice_id_mvp.storage.journal_store import JournalStore, JournalBusy
 from voice_id_mvp.services import workspace_app as module
 
 
@@ -113,7 +113,7 @@ def test_failure_keeps_audio_and_nonjournal_operations(monkeypatch):
 
 
 def test_queue_full_still_keeps_recording(monkeypatch):
-    from voice_id_mvp.workspace_jobs import QueueFull
+    from voice_id_mvp.application.workspace_jobs import QueueFull
     with TestClient(module.app) as client:
         def full(*a):
             raise QueueFull('Очередь заполнена')

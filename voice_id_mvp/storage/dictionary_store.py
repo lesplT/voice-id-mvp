@@ -8,18 +8,45 @@ import unicodedata
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
-from .config import get_settings
+from voice_id_mvp.core.config import get_settings
 
 
 def word_key(text):
+    """Purpose:
+        Create a Unicode-normalized, case-insensitive dictionary lookup key.
+
+    Ingress:
+        A word, phrase, or search string.
+
+    Egress:
+        The stripped NFC-normalized casefolded string.
+    """
     return unicodedata.normalize('NFC',text).strip().casefold()
 
 
 class DictionaryError(ValueError):
+    """Purpose:
+        Represent dictionary conflicts or invalid storage operations.
+
+    Ingress:
+        A user-facing explanation of the dictionary error.
+
+    Egress:
+        An exception handled by dictionary HTTP routes.
+    """
     pass
 
 
 class WordInput(BaseModel):
+    """Purpose:
+        Validate editable dictionary entries before persistence.
+
+    Ingress:
+        A canonical word, aliases, optional category/note, and active flag.
+
+    Egress:
+        A validated dictionary payload with normalized words and aliases.
+    """
     word: str = Field(min_length=1,max_length=120)
     category: str = Field(default='',max_length=50)
     description: str = Field(default='',max_length=1000)
@@ -29,6 +56,15 @@ class WordInput(BaseModel):
     @field_validator('word')
     @classmethod
     def clean_word(cls,value):
+        """Purpose:
+            Normalize a canonical dictionary word and require alphabetic content.
+
+        Ingress:
+            The proposed word or phrase.
+
+        Egress:
+            The normalized nonempty word; raises ValueError for invalid content.
+        """
         value=unicodedata.normalize('NFC',value).strip()
         if not value or not any(c.isalpha() for c in value):
             raise ValueError('Введите слово или фразу.')
@@ -37,6 +73,15 @@ class WordInput(BaseModel):
     @field_validator('aliases')
     @classmethod
     def clean_aliases(cls,values):
+        """Purpose:
+            Normalize and deduplicate explicit mistaken spellings.
+
+        Ingress:
+            A list of alias strings supplied with a dictionary entry.
+
+        Egress:
+            Distinct validated aliases; raises ValueError for oversized or nonalphabetic variants.
+        """
         result=[]
         for value in values:
             value=unicodedata.normalize('NFC',value).strip()
@@ -50,7 +95,25 @@ class WordInput(BaseModel):
 
 
 class DictionaryStore:
+    """Purpose:
+        Persist curated words and labelled audio examples without training models.
+
+    Ingress:
+        An optional storage directory or the configured dictionary path.
+
+    Egress:
+        SQLite-backed entry operations and paths to retained WAV examples.
+    """
     def __init__(self,folder: Path | None=None):
+        """Purpose:
+            Initialize the dictionary directories and schema without replacing existing data.
+
+        Ingress:
+            An optional dictionary storage directory.
+
+        Egress:
+            An initialized store; missing directories and tables are created.
+        """
         self.folder = Path(folder or get_settings().dictionary_path)
         self.folder.mkdir(parents=True,exist_ok=True)
         self.audio_folder=self.folder/'audio'
@@ -71,6 +134,15 @@ class DictionaryStore:
 
     @contextmanager
     def _db(self):
+        """Purpose:
+            Provide a transactional SQLite connection with foreign-key enforcement.
+
+        Ingress:
+            The store's configured database path.
+
+        Egress:
+            Yields a row-based connection and always closes it on context exit.
+        """
         db=sqlite3.connect(self.path,timeout=30)
         db.row_factory=sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON')
@@ -82,6 +154,15 @@ class DictionaryStore:
 
     @staticmethod
     def _decode(row):
+        """Purpose:
+            Convert a SQLite dictionary row into application-level field types.
+
+        Ingress:
+            A dictionary row containing JSON aliases and integer flags.
+
+        Egress:
+            A dictionary with decoded aliases and Boolean flags.
+        """
         result=dict(row)
         result['aliases']=json.loads(result['aliases'])
         result['active']=bool(result['active'])
@@ -89,6 +170,15 @@ class DictionaryStore:
         return result
 
     def list(self,query=''):
+        """Purpose:
+            List nonarchived words and their examples, optionally filtering by text.
+
+        Ingress:
+            An optional normalized search query.
+
+        Egress:
+            Dictionary entry dictionaries, ordered by canonical lookup key.
+        """
         with self._db() as db:
             rows=db.execute('SELECT * FROM words WHERE archived=0 ORDER BY word_key').fetchall()
             result=[]
@@ -101,6 +191,15 @@ class DictionaryStore:
             return result
 
     def get(self,word_id):
+        """Purpose:
+            Read one nonarchived dictionary entry and its audio metadata.
+
+        Ingress:
+            A word identifier.
+
+        Egress:
+            The entry dictionary; raises KeyError when the word is absent or archived.
+        """
         with self._db() as db:
             row=db.execute('SELECT * FROM words WHERE id=? AND archived=0',(word_id,)).fetchone()
             if row is None:
@@ -110,6 +209,15 @@ class DictionaryStore:
             return result
 
     def save(self,entry: WordInput,word_id=None):
+        """Purpose:
+            Create or update a word while rejecting conflicting active words and aliases.
+
+        Ingress:
+            Validated WordInput and an optional existing word identifier.
+
+        Egress:
+            The persisted entry; raises DictionaryError on conflicting names or aliases.
+        """
         now=datetime.now(timezone.utc).isoformat()
         with self._db() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -136,11 +244,29 @@ class DictionaryStore:
         return self.get(word_id)
 
     def archive(self,word_id):
+        """Purpose:
+            Hide a word and disable its corrections without deleting audio examples.
+
+        Ingress:
+            An existing nonarchived word identifier.
+
+        Egress:
+            None; the word is archived and its files remain on disk.
+        """
         self.get(word_id)
         with self._db() as db:
             db.execute('UPDATE words SET archived=1,active=0 WHERE id=?',(word_id,))
 
     def add_example(self,word_id,wav_path: Path,filename,transcript,duration):
+        """Purpose:
+            Attach a labelled WAV example to an existing dictionary word.
+
+        Ingress:
+            Word ID, WAV path, original filename, transcript, and duration.
+
+        Egress:
+            The updated entry; raises on an archived word or the per-word example limit.
+        """
         self.get(word_id)
         example_id=uuid4().hex
         destination=self.audio_folder/(example_id+'.wav')
@@ -156,6 +282,15 @@ class DictionaryStore:
         return self.get(word_id)
 
     def example_path(self,example_id):
+        """Purpose:
+            Resolve a retained example only when its parent word is visible.
+
+        Ingress:
+            A hexadecimal example identifier.
+
+        Egress:
+            The existing WAV path; raises KeyError for invalid, absent, or archived examples.
+        """
         if len(example_id)!=32 or any(c not in '0123456789abcdef' for c in example_id):
             raise KeyError(example_id)
         with self._db() as db:

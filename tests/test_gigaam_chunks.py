@@ -1,7 +1,7 @@
 import wave
 from pathlib import Path
 
-from voice_id_mvp.asr import GigaAmAsr
+from voice_id_mvp.recognition.asr import GigaAmAsr
 
 
 def test_long_recording_is_split_below_upstream_limit(tmp_path, monkeypatch):

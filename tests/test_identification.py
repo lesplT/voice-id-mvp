@@ -1,4 +1,4 @@
-from voice_id_mvp.identification import UNKNOWN, aggregate_hits, decide_identity
+from voice_id_mvp.recognition.identification import UNKNOWN, aggregate_hits, decide_identity
 
 
 def test_top_k_aggregation_uses_mean_score_per_speaker() -> None:

@@ -7,20 +7,47 @@ from pathlib import Path
 
 import numpy as np
 
-from .config import get_settings
+from voice_id_mvp.core.config import get_settings
 
 
 @dataclass(frozen=True)
 class TimeSegment:
+    """Purpose:
+        Represent a time-bounded speech interval.
+
+    Ingress:
+        Start and end timestamps in seconds.
+
+    Egress:
+        An interval value object exposing its duration.
+    """
     start: float
     end: float
 
     @property
     def duration(self) -> float:
+        """Purpose:
+            Measure the length of this speech interval.
+
+        Ingress:
+            The interval's start and end fields.
+
+        Egress:
+            Duration in seconds.
+        """
         return self.end - self.start
 
 
 def _dbfs(samples: np.ndarray) -> float:
+    """Purpose:
+        Estimate frame loudness relative to digital full scale.
+
+    Ingress:
+        A numeric audio sample array.
+
+    Egress:
+        A dBFS float suitable for the energy-based speech detector.
+    """
     if samples.size == 0:
         return -120.0
     rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2)))
@@ -28,6 +55,15 @@ def _dbfs(samples: np.ndarray) -> float:
 
 
 def detect_speech_segments(wav_path: Path) -> list[TimeSegment]:
+    """Purpose:
+        Find speech-like intervals using frame energy, padding, and configured bounds.
+
+    Ingress:
+        A normalized WAV path and VAD settings.
+
+    Egress:
+        Ordered TimeSegment instances; returns an empty list for silence/no detected speech.
+    """
     settings = get_settings()
     with wave.open(str(wav_path), "rb") as wav:
         rate = wav.getframerate()
@@ -75,5 +111,14 @@ def detect_speech_segments(wav_path: Path) -> list[TimeSegment]:
 
 
 def has_speech(wav_path: Path) -> bool:
+    """Purpose:
+        Check whether the energy-based detector finds any speech interval.
+
+    Ingress:
+        A normalized WAV path.
+
+    Egress:
+        True when at least one speech segment is detected, otherwise False.
+    """
     return bool(detect_speech_segments(wav_path))
 

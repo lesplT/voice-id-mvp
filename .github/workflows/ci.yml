@@ -14,7 +14,7 @@ jobs:
       - name: Check publication manifest
         run: python scripts/check_publish_files.py
       - name: Validate Compose
-        run: docker compose -f compose.docker.yml config --quiet
+        run: docker compose config --quiet
       - name: Build Linux CPU test image
         run: docker build --target test -t voice-id-mvp:test .
       - name: Run tests inside container

@@ -5,10 +5,19 @@ from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
+    """Purpose:
+        Validate environment configuration and resolve project-relative resource paths.
+
+    Ingress:
+        Environment variables, optional .env values, and constructor overrides.
+
+    Egress:
+        A typed settings instance describing model paths, service URLs, storage, and thresholds.
+    """
     model_config = SettingsConfigDict(
         env_file=ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
     )
@@ -42,6 +51,15 @@ class Settings(BaseSettings):
     vad_noise_margin_db: float = 9.0
 
     def model_post_init(self, __context) -> None:
+        """Purpose:
+            Resolve relative model and storage paths against the project root.
+
+        Ingress:
+            Validated settings fields and Pydantic initialization context.
+
+        Egress:
+            None; relative Path fields are replaced with absolute project-root paths.
+        """
         for name in ("vosk_spk_model_path", "vosk_asr_model_path", "qdrant_local_path", "gigaam_cache_path", "ecapa_model_path", "dictionary_path", "journal_path"):
             p = Path(getattr(self, name))
             if not p.is_absolute():
@@ -50,4 +68,13 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Purpose:
+        Reuse one validated configuration instance per process.
+
+    Ingress:
+        No arguments; settings are sourced from the environment and optional .env file.
+
+    Egress:
+        The cached Settings instance.
+    """
     return Settings()

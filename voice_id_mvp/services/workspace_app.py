@@ -9,28 +9,55 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from ..config import ROOT, get_settings
-from ..dictionary import DictionaryStore, DictionaryError, WordInput
-from ..audio import normalized_upload, wav_duration, AudioError
-from ..segmentation import has_speech
-from ..dictionary_corrections import apply_dictionary_result
-from ..workspace_jobs import JobManager, QueueFull
-from ..journal import JournalStore, JournalBusy, audio_media_type
+from voice_id_mvp.core.config import ROOT, get_settings
+from voice_id_mvp.storage.dictionary_store import DictionaryStore, DictionaryError, WordInput
+from voice_id_mvp.audio.processing import normalized_upload, wav_duration, AudioError
+from voice_id_mvp.audio.segmentation import has_speech
+from voice_id_mvp.application.dictionary_corrections import apply_dictionary_result
+from voice_id_mvp.application.workspace_jobs import JobManager, QueueFull
+from voice_id_mvp.storage.journal_store import JournalStore, JournalBusy, audio_media_type
 
 WEB = ROOT / 'voice_id_mvp/web'
 MAX_UPLOAD = 100 * 1024 * 1024
 
 
 def dictionary_store():
+    """Purpose:
+        Construct the dictionary storage adapter for the current process settings.
+
+    Ingress:
+        The configured dictionary directory.
+
+    Egress:
+        A DictionaryStore instance sharing persistent data with other adapters.
+    """
     return DictionaryStore()
 
 
 def journal_store():
+    """Purpose:
+        Construct the durable journal adapter for the current process settings.
+
+    Ingress:
+        The configured journal directory.
+
+    Egress:
+        A JournalStore instance preserving existing recordings.
+    """
     return JournalStore()
 
 
 @asynccontextmanager
 async def lifespan(app):
+    """Purpose:
+        Recover interrupted journal jobs and manage the workspace background executor.
+
+    Ingress:
+        The FastAPI application entering or leaving its lifespan.
+
+    Egress:
+        Yields while serving; installs JobManager and shuts it down on exit.
+    """
     journal_store().recover_interrupted()
     app.state.jobs = JobManager()
     yield
@@ -43,6 +70,15 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1','localhost'
 
 @app.middleware('http')
 async def local_origin(request, call_next):
+    """Purpose:
+        Restrict mutating requests to the local interface and attach defensive response headers.
+
+    Ingress:
+        The incoming HTTP request and downstream handler.
+
+    Egress:
+        A checked response with security headers, or an early origin/upload-size error.
+    """
     from fastapi.responses import JSONResponse
     origin = request.headers.get('origin')
     if request.method not in {'GET','HEAD','OPTIONS'} and origin and origin != str(request.base_url).rstrip('/'):
@@ -60,15 +96,42 @@ async def local_origin(request, call_next):
 
 @app.get('/health')
 def health():
+    """Purpose:
+        Report HTTP service availability without loading recognition models.
+
+    Ingress:
+        A GET /health request.
+
+    Egress:
+        A JSON dictionary identifying the service and its status.
+    """
     return {'status':'ok','service':'workspace'}
 
 
 @app.get('/')
 def home():
+    """Purpose:
+        Serve the unified local browser interface.
+
+    Ingress:
+        A GET / request and the configured static frontend directory.
+
+    Egress:
+        The index.html file response.
+    """
     return FileResponse(WEB/'index.html')
 
 
 async def limited_upload(audio: UploadFile, limit=None):
+    """Purpose:
+        Read an upload incrementally while enforcing a byte limit.
+
+    Ingress:
+        An UploadFile and optional byte limit.
+
+    Egress:
+        Nonempty uploaded bytes; raises HTTP errors for empty or oversized inputs.
+    """
     limit = MAX_UPLOAD if limit is None else limit
     data = bytearray()
     while chunk := await audio.read(1024*1024):
@@ -81,6 +144,15 @@ async def limited_upload(audio: UploadFile, limit=None):
 
 
 def service_request(method, port, path, **kwargs):
+    """Purpose:
+        Forward an internal operation to its configured backend without environment proxies.
+
+    Ingress:
+        HTTP method, supported service port, relative endpoint path, and request arguments.
+
+    Egress:
+        Decoded backend JSON; connectivity, timeout, and backend failures become readable RuntimeErrors.
+    """
     try:
         with httpx.Client(timeout=600,trust_env=False) as client:
             settings = get_settings()
@@ -105,6 +177,15 @@ def service_request(method, port, path, **kwargs):
 @app.post('/api/jobs',status_code=202)
 async def create_job(operation: Literal['dialogue','transcribe','identify','enroll'] = Form(...),
                      audio: UploadFile = File(...), speaker_id: str = Form(''), use_dictionary: bool = Form(True)):
+    """Purpose:
+        Persist applicable recordings and submit bounded background recognition work.
+
+    Ingress:
+        Multipart operation/audio, optional speaker ID, and dictionary preference.
+
+    Egress:
+        An initial job snapshot with journal ID when applicable, or an actionable HTTP error.
+    """
     if operation == 'enroll' and (not speaker_id.strip() or len(speaker_id) > 80 or '/' in speaker_id or '\\' in speaker_id):
         raise HTTPException(422,'Введите имя говорящего, до 80 символов, без слешей.')
     data = await limited_upload(audio)
@@ -117,6 +198,15 @@ async def create_job(operation: Literal['dialogue','transcribe','identify','enro
     except OSError as exc:
         raise HTTPException(507,'Не удалось сохранить запись на диск. Проверьте свободное место; обработка не начата.') from exc
     def process():
+        """Purpose:
+            Run one backend operation and persist its journal result or failure.
+
+        Ingress:
+            The enclosing upload bytes, selected backend, dictionary flag, and optional journal entry.
+
+        Egress:
+            A backend result; journal status is updated before return or exception propagation.
+        """
         try:
             if entry:
                 journal.update(entry['id'],'running')
@@ -144,11 +234,29 @@ async def create_job(operation: Literal['dialogue','transcribe','identify','enro
 
 @app.get('/api/journal')
 def list_journal(q: str = Query('',max_length=200), limit: int = Query(30,ge=1,le=100), offset: int = Query(0,ge=0)):
+    """Purpose:
+        Expose paginated persistent recording summaries and storage counts.
+
+    Ingress:
+        Validated search text, page limit, and offset from HTTP query parameters.
+
+    Egress:
+        A journal page dictionary including total counts and retained audio bytes.
+    """
     return journal_store().list(q,limit,offset)
 
 
 @app.get('/api/journal/{recording_id}')
 def journal_entry(recording_id: str):
+    """Purpose:
+        Retrieve one saved journal entry through the HTTP API.
+
+    Ingress:
+        A recording identifier from the route.
+
+    Egress:
+        The full entry dictionary, or HTTP 404 when absent/deleted.
+    """
     try:
         return journal_store().get(recording_id)
     except KeyError as exc:
@@ -157,6 +265,15 @@ def journal_entry(recording_id: str):
 
 @app.get('/api/journal/{recording_id}/audio')
 def journal_audio(recording_id: str, download: bool = False):
+    """Purpose:
+        Serve retained original audio for playback or download.
+
+    Ingress:
+        A recording identifier and optional download flag.
+
+    Egress:
+        A confined file response with a safe MIME type, or HTTP 404.
+    """
     entry = journal_entry(recording_id)
     path = journal_store().audio_path(recording_id)
     if not path.is_file():
@@ -167,6 +284,15 @@ def journal_audio(recording_id: str, download: bool = False):
 
 @app.delete('/api/journal/{recording_id}')
 def delete_journal(recording_id: str):
+    """Purpose:
+        Delete one explicitly selected saved recording and forget its completed job result.
+
+    Ingress:
+        A journal recording identifier from a DELETE request.
+
+    Egress:
+        A deletion acknowledgement; rejects active jobs and reports filesystem failures.
+    """
     try:
         journal_store().delete(recording_id)
     except KeyError as exc:
@@ -181,6 +307,15 @@ def delete_journal(recording_id: str):
 
 @app.get('/api/jobs/{job_id}')
 def get_job(job_id: str):
+    """Purpose:
+        Expose the current snapshot of a background recognition job.
+
+    Ingress:
+        A job identifier from the route.
+
+    Egress:
+        A job status dictionary, or HTTP 404 after expiry/eviction.
+    """
     try:
         return app.state.jobs.get(job_id)
     except KeyError as exc:
@@ -189,6 +324,15 @@ def get_job(job_id: str):
 
 @app.get('/api/speakers')
 def speakers():
+    """Purpose:
+        List saved speaker profiles through the appropriate repository/backend.
+
+    Ingress:
+        A GET request for registered speakers.
+
+    Egress:
+        A dictionary of speaker summaries; backend failures are translated into HTTP errors.
+    """
     try:
         return service_request('GET',8001,'/speakers')
     except RuntimeError as exc:
@@ -201,11 +345,29 @@ if WEB.exists():
 
 @app.get('/api/dictionary')
 def list_dictionary(q: str=''):
+    """Purpose:
+        Expose visible curated words and their labelled audio metadata.
+
+    Ingress:
+        Optional search text from the HTTP query.
+
+    Egress:
+        A dictionary containing matching word entries.
+    """
     return {'words':dictionary_store().list(q[:200])}
 
 
 @app.post('/api/dictionary',status_code=201)
 def create_word(entry: WordInput):
+    """Purpose:
+        Create a validated canonical word with explicit correction aliases.
+
+    Ingress:
+        A WordInput JSON body.
+
+    Egress:
+        The saved word entry, or a conflict/validation HTTP error.
+    """
     try:
         return dictionary_store().save(entry)
     except DictionaryError as exc:
@@ -214,6 +376,15 @@ def create_word(entry: WordInput):
 
 @app.put('/api/dictionary/{word_id}')
 def update_word(word_id: str,entry: WordInput):
+    """Purpose:
+        Update one existing dictionary entry without changing unrelated words.
+
+    Ingress:
+        A word identifier and validated WordInput JSON body.
+
+    Egress:
+        The updated entry, or an appropriate missing/conflicting-entry HTTP error.
+    """
     try:
         return dictionary_store().save(entry,word_id)
     except KeyError as exc:
@@ -224,6 +395,15 @@ def update_word(word_id: str,entry: WordInput):
 
 @app.delete('/api/dictionary/{word_id}')
 def archive_word(word_id: str):
+    """Purpose:
+        Archive a word while retaining its labelled recordings.
+
+    Ingress:
+        A word identifier from a DELETE request.
+
+    Egress:
+        An archive acknowledgement, or HTTP 404 if the entry is unavailable.
+    """
     try:
         dictionary_store().archive(word_id)
         return {'archived':word_id}
@@ -233,11 +413,29 @@ def archive_word(word_id: str):
 
 @app.post('/api/dictionary/{word_id}/examples',status_code=201)
 async def add_example(word_id: str,audio: UploadFile=File(...),transcript: str=Form('')):
+    """Purpose:
+        Validate and store one labelled speech example for a dictionary word.
+
+    Ingress:
+        Word ID, uploaded audio, and optional correct transcript.
+
+    Egress:
+        The updated word entry after bounded duration/speech validation and WAV normalization.
+    """
     from starlette.concurrency import run_in_threadpool
     if len(transcript)>1000:
         raise HTTPException(422,'Текст примера должен быть короче 1000 символов.')
     data=await limited_upload(audio,limit=15*1024*1024)
     def save():
+        """Purpose:
+            Normalize and persist a dictionary audio example off the async request thread.
+
+        Ingress:
+            The enclosing uploaded bytes, target word, filename, and transcript.
+
+        Egress:
+            The updated word with its example; invalid audio/duration/speech is reported as an HTTP error.
+        """
         try:
             store=dictionary_store()
             word=store.get(word_id)
@@ -258,6 +456,15 @@ async def add_example(word_id: str,audio: UploadFile=File(...),transcript: str=F
 
 @app.get('/api/dictionary/examples/{example_id}/audio')
 def example_audio(example_id: str):
+    """Purpose:
+        Serve an audio example only for a visible dictionary word.
+
+    Ingress:
+        A validated example identifier.
+
+    Egress:
+        A WAV file response, or HTTP 404 for absent or archived examples.
+    """
     try:
         return FileResponse(dictionary_store().example_path(example_id),media_type='audio/wav')
     except KeyError as exc:

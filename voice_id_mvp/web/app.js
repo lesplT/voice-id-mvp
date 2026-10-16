@@ -48,6 +48,14 @@ function status(node, text, error = false) {
   node.hidden = false; node.textContent = text;
   node.classList.toggle('error', error);
 }
+/**
+ * Purpose:
+ *     Send a bounded local API request and translate transport/backend failures.
+ * Ingress:
+ *     A relative API path and optional fetch options.
+ * Egress:
+ *     Parsed JSON on success; rejects with a readable Error on failure or timeout.
+ */
 async function api(path, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 240000);
@@ -68,6 +76,14 @@ async function api(path, options = {}) {
   } finally { clearTimeout(timeout); }
 }
 
+/**
+ * Purpose:
+ *     Activate one accessible workspace panel and refresh its relevant data.
+ * Ingress:
+ *     A known panel ID and optional keyboard-focus flag.
+ * Egress:
+ *     Updates tab/panel state and triggers the panel-specific data load.
+ */
 function activateTab(id, focus = false) {
   for (const tab of $$('.tab')) {
     const active = tab.dataset.tab === id;
@@ -93,6 +109,14 @@ for (const tab of $$('.tab')) {
   });
 }
 
+/**
+ * Purpose:
+ *     Preview a selected audio file without uploading it.
+ * Ingress:
+ *     An audio form containing a file input and preview player.
+ * Egress:
+ *     Updates filename/player state; rejects oversized input and revokes stale object URLs.
+ */
 function previewFile(form) {
   const file = $('input[type=file]', form).files[0];
   const preview = $('.file-preview', form);
@@ -169,6 +193,14 @@ for (const form of $$('.audio-form')) {
   });
 }
 
+/**
+ * Purpose:
+ *     Save client-side result content as a browser download.
+ * Ingress:
+ *     A filename, string content, and MIME type.
+ * Egress:
+ *     Creates a temporary Blob URL and download action, then releases the URL.
+ */
 function download(filename, text, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const link = element('a'); link.href = url; link.download = filename;
@@ -179,6 +211,14 @@ function resultText(operation, result) {
   if (operation === 'dialogue') return (result.segments || []).map(item => `[${timeLabel(item.start)}–${timeLabel(item.end)}] ${friendlyName(item.speaker_id)}: ${item.text || ''}`).join('\n');
   return result.text || '';
 }
+/**
+ * Purpose:
+ *     Attach text-copy and TXT/JSON download actions for a result.
+ * Ingress:
+ *     Operation type, result payload, and optional target view.
+ * Egress:
+ *     Replaces the export toolbar with actions; does not upload result data.
+ */
 function renderExports(operation, result, view = operation) {
   const bar = $(`#${view}-exports`); bar.replaceChildren(); bar.hidden = false;
   bar.append(button('Копировать текст', async () => {
@@ -194,6 +234,14 @@ function showOriginal(container, original) {
   details.append(element('summary', 'Показать исходный текст до словаря'), element('p', original));
   container.append(details);
 }
+/**
+ * Purpose:
+ *     Render every dialogue turn, including unidentified participants.
+ * Ingress:
+ *     A dialogue payload, target view, and player selector.
+ * Egress:
+ *     Readable turn cards, original-text details, export actions, and seek/play controls.
+ */
 function renderDialogue(result, view = 'dialogue', playerSelector = '#dialogue-form audio') {
   const container = $(`#${view}-result`); container.replaceChildren();
   const segments = result.segments || [];
@@ -221,6 +269,14 @@ function renderDialogue(result, view = 'dialogue', playerSelector = '#dialogue-f
     container.append(turn);
   }
 }
+/**
+ * Purpose:
+ *     Render recognized text and auditable dictionary corrections.
+ * Ingress:
+ *     A transcription payload and optional target view.
+ * Egress:
+ *     Readable text, correction/original details, and export actions.
+ */
 function renderTranscript(result, view = 'transcribe') {
   const container = $(`#${view}-result`); container.replaceChildren();
   renderExports('transcribe', result, view);
@@ -228,12 +284,28 @@ function renderTranscript(result, view = 'transcribe') {
   container.append(element('div', result.text || 'В записи не удалось распознать текст.', 'transcript-text'));
   if (result.original_text && result.original_text !== result.text) showOriginal(container, result.original_text);
 }
+/**
+ * Purpose:
+ *     Display a conservative known-speaker or UNKNOWN decision.
+ * Ingress:
+ *     An identification result with optional failure reason.
+ * Egress:
+ *     Updates the identity result panel and provides JSON download.
+ */
 function renderIdentity(result) {
   const node = $('#identify-result'); node.replaceChildren();
   node.append(element('strong', friendlyName(result.speaker_id)));
   if (result.reason) node.append(element('p', reasons[result.reason] || 'Говорящий не определён.', 'muted'));
   node.append(button('Сохранить JSON', () => download('voice-id-identify.json', JSON.stringify(result, null, 2), 'application/json;charset=utf-8')));
 }
+/**
+ * Purpose:
+ *     Refresh registered voices and report backend connectivity.
+ * Ingress:
+ *     The local speakers API and existing UI state.
+ * Egress:
+ *     Updates knownSpeakers, the voice list, and connection status; reports errors in place.
+ */
 async function loadSpeakers() {
   const node = $('#speakers-list');
   try {
@@ -272,6 +344,14 @@ function editWord(word) {
   $('#word-name').focus();
 }
 $('#new-word').addEventListener('click', () => editWord(null));
+/**
+ * Purpose:
+ *     Refresh curated words without retraining recognition models.
+ * Ingress:
+ *     The local dictionary API and current UI selection.
+ * Egress:
+ *     Updates cached word entries and renders their searchable cards.
+ */
 async function loadDictionary() {
   const node = $('#dictionary-list');
   try {
@@ -279,6 +359,14 @@ async function loadDictionary() {
     renderDictionary();
   } catch (error) { node.textContent = error.message; }
 }
+/**
+ * Purpose:
+ *     Render curated words and playable labelled examples safely.
+ * Ingress:
+ *     Cached dictionary entries and the current search field.
+ * Egress:
+ *     Creates text-only word cards with edit/archive controls and audio players.
+ */
 function renderDictionary() {
   const query = $('#dictionary-search').value.trim().toLocaleLowerCase('ru');
   const words = dictionaryWords.filter(word => `${word.word} ${word.category} ${word.description}`.toLocaleLowerCase('ru').includes(query));
@@ -354,6 +442,14 @@ loadSpeakers();
 
 const journalStatuses = { queued: 'В очереди', running: 'Обрабатывается', done: 'Готово', failed: 'Ошибка обработки', interrupted: 'Обработка прервана' };
 function recordingDate(value) { return new Date(value).toLocaleString('ru-RU'); }
+/**
+ * Purpose:
+ *     Load a persistent journal page without applying stale search responses.
+ * Ingress:
+ *     The search field, page offset, and local journal API.
+ * Egress:
+ *     Updates recording summaries, audio-size counters, and pagination or an error message.
+ */
 async function loadJournal() {
   const request = ++journalRequest;
   const list = $('#journal-list');
@@ -376,6 +472,14 @@ async function loadJournal() {
     if (journalOffset + data.entries.length < data.total) pages.append(button('Ещё →', () => { journalOffset += 30; loadJournal(); }));
   } catch (error) { if (request === journalRequest) list.textContent = error.message; }
 }
+/**
+ * Purpose:
+ *     Open a saved recording with playback, result exports, and explicit deletion.
+ * Ingress:
+ *     A persistent journal recording ID.
+ * Egress:
+ *     Updates the journal detail panel; confirmed deletion removes the selected server record.
+ */
 async function openRecording(id) {
   selectedRecording = id;
   const node = $('#journal-result'); node.textContent = 'Открываем запись…';

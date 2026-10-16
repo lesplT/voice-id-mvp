@@ -3,15 +3,24 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from .asr import transcribe_wav
-from .audio import write_wav_slice
-from .identification import identify_wav
-from .repository import VoiceRepository
-from .segmentation import detect_speech_segments
-from .config import get_settings
+from voice_id_mvp.recognition.asr import transcribe_wav
+from voice_id_mvp.audio.processing import write_wav_slice
+from voice_id_mvp.recognition.identification import identify_wav
+from voice_id_mvp.storage.voice_repository import VoiceRepository
+from voice_id_mvp.audio.segmentation import detect_speech_segments
+from voice_id_mvp.core.config import get_settings
 
 
 def merge_dialogue_segments(segments: list[dict], max_gap: float = 0.5) -> list[dict]:
+    """Purpose:
+        Merge nearby turns only when the same known speaker is identified.
+
+    Ingress:
+        Ordered segment dictionaries and the maximum permitted inter-turn gap.
+
+    Egress:
+        A new list of merged turns with combined text, span, part count, and score.
+    """
     merged: list[dict] = []
     for segment in segments:
         if (
@@ -35,12 +44,21 @@ def merge_dialogue_segments(segments: list[dict], max_gap: float = 0.5) -> list[
 
 
 def dialogue_from_wav(wav_path: Path) -> dict:
+    """Purpose:
+        Combine speech segmentation, acoustic speaker ID, and Russian transcription.
+
+    Ingress:
+        A normalized WAV recording and configured pretrained recognition backends.
+
+    Egress:
+        A dialogue dictionary containing timestamped speaker/text segments; UNKNOWN turns remain included.
+    """
     time_segments = detect_speech_segments(wav_path)
     if not time_segments:
         return {"segments": [], "text": "", "reason": "no_speech"}
     repository = VoiceRepository()
     if get_settings().speaker_engine == "ecapa":
-        from .speaker_turns import split_speaker_turns
+        from voice_id_mvp.recognition.speaker_turns import split_speaker_turns
         time_segments = split_speaker_turns(wav_path, time_segments, repository.reference_vectors())
     rendered: list[dict] = []
     with tempfile.TemporaryDirectory(prefix="voice-dialogue-") as tmp:

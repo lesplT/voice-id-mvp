@@ -37,7 +37,7 @@ def main():
         print('Preparing pretrained model:', name, flush=True)
         unpack_model(name, f'https://alphacephei.com/vosk/models/{name}.zip')
     runpy.run_path(str(ROOT / 'scripts/download_ecapa.py'), run_name='__main__')
-    from voice_id_mvp.asr import GigaAmAsr
+    from voice_id_mvp.recognition.asr import GigaAmAsr
     print('Preparing GigaAM v3 CPU (first download can take several minutes)', flush=True)
     GigaAmAsr._get_model()
     endpoint = os.environ['QDRANT_URL'].rstrip('/') + '/readyz'
@@ -50,7 +50,7 @@ def main():
             time.sleep(2)
     else:
         raise RuntimeError('Qdrant did not become ready')
-    from voice_id_mvp.repository import VoiceRepository
+    from voice_id_mvp.storage.voice_repository import VoiceRepository
     VoiceRepository().ensure_collection()
     print('Pretrained models verified; Qdrant ready', flush=True)
 

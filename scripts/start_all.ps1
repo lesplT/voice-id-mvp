@@ -27,7 +27,7 @@ if (Test-Path "data\qdrant_local\meta.json") {
     Write-Host "Preserving existing embedded voice database for native Windows services."
 }
 if ($DockerAvailable) {
-    docker compose up -d qdrant
+    docker compose --profile native up -d qdrant-native
     $QdrantMode = "docker"
 } else {
     # PowerShell removes an environment variable when it is set to an empty

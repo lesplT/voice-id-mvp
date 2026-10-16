@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from voice_id_mvp.embeddings import l2_normalize, normalized_centroid
+from voice_id_mvp.recognition.embeddings import l2_normalize, normalized_centroid
 
 
 def test_l2_normalize() -> None:

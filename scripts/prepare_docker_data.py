@@ -19,7 +19,7 @@ def main():
     if export.exists():
         raise RuntimeError('Private voice export already exists. Preserved; inspect before retrying.')
     target.parent.mkdir(parents=True, exist_ok=True)
-    from voice_id_mvp.repository import VoiceRepository
+    from voice_id_mvp.storage.voice_repository import VoiceRepository
     repository = VoiceRepository()
     # Explicitly read the native embedded store, not the new Docker server.
     repository.settings = repository.settings.model_copy(update={'qdrant_url':'local'})

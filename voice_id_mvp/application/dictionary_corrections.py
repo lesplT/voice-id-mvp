@@ -3,10 +3,19 @@ from copy import deepcopy
 import re
 import unicodedata
 
-from .dictionary import DictionaryStore, word_key
+from voice_id_mvp.storage.dictionary_store import DictionaryStore, word_key
 
 
 def correct_text(text: str,entries: list[dict]):
+    """Purpose:
+        Apply only explicit active dictionary aliases at word/phrase boundaries.
+
+    Ingress:
+        Recognized text and curated dictionary entries.
+
+    Egress:
+        A tuple of corrected text and auditable before/after change records.
+    """
     mapping={}
     for entry in entries:
         if not entry.get('active',True) or entry.get('archived',False):
@@ -23,6 +32,15 @@ def correct_text(text: str,entries: list[dict]):
     pattern=re.compile(r'(?<!\w)(?:'+ '|'.join(re.escape(key) for key in sorted(mapping,key=len,reverse=True))+r')(?!\w)',re.IGNORECASE)
     changes=[]
     def substitute(match):
+        """Purpose:
+            Replace a matched alias while preserving its capitalization pattern.
+
+        Ingress:
+            A regex match and the surrounding alias mapping/change accumulator.
+
+        Egress:
+            The replacement string; appends an audit record when a correction is applied.
+        """
         before=match.group()
         entry=mapping.get(word_key(before))
         if entry is None:
@@ -38,6 +56,15 @@ def correct_text(text: str,entries: list[dict]):
 
 
 def apply_dictionary_result(result: dict, enabled: bool=True, entries: list[dict] | None=None):
+    """Purpose:
+        Decorate transcription/dialogue output without changing speaker IDs or timestamps.
+
+    Ingress:
+        A result dictionary, enabled flag, and optional explicit dictionary entries.
+
+    Egress:
+        A copied result with original text and correction metadata; repeated decoration is idempotent.
+    """
     output=deepcopy(result)
     # Prevent double application when forwarding an already-decorated response.
     if 'dictionary_enabled' in output:
