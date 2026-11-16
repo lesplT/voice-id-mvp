@@ -10,7 +10,7 @@ from filelock import FileLock
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-from voice_id_mvp.core.config import get_settings
+from voice_id_mvp.core.config import Settings, get_settings
 
 
 VECTOR_SIZE = 128
@@ -26,17 +26,17 @@ class VoiceRepository:
     Egress:
         Persistent enrollment records, ranked search hits, and registered-speaker summaries.
     """
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Purpose:
             Bind Qdrant operations to the current application settings.
 
         Ingress:
-            No arguments; process-level settings provide storage configuration.
+            Optional explicit settings; otherwise use the process configuration.
 
         Egress:
             A repository adapter; no model is loaded during construction.
         """
-        self.settings = get_settings()
+        self.settings = settings or get_settings()
 
     @contextmanager
     def _client(self) -> Iterator[QdrantClient]:
@@ -220,20 +220,23 @@ class VoiceRepository:
             for item in sorted(stats.values(), key=lambda x: x["speaker_id"])
         ]
 
-    def reference_vectors(self) -> dict[str, list[list[float]]]:
+    def reference_vectors(self, *, create_missing: bool = True) -> dict[str, list[list[float]]]:
         """Purpose:
             Group reference vectors for acoustic speaker-change proposals.
 
         Ingress:
-            The active Qdrant collection.
+            The active Qdrant collection and whether to provision it if missing.
 
         Egress:
             A mapping from speaker IDs to their normalized reference vectors.
         """
-        self.ensure_collection()
+        if create_missing:
+            self.ensure_collection()
         result: dict[str, list[list[float]]] = {}
         offset = None
         with self._client() as client:
+            if not create_missing and not client.collection_exists(self.settings.qdrant_collection):
+                return result
             while True:
                 points, offset = client.scroll(collection_name=self.settings.qdrant_collection,
                     limit=256, offset=offset, with_payload=True, with_vectors=True)

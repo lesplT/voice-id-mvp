@@ -203,6 +203,9 @@ def transcribe_wav(wav_path: Path) -> dict:
     engine = settings.asr_engine.lower()
     if engine == "vosk":
         return VoskAsr().transcribe(wav_path)
+    if engine == "nemotron":
+        from voice_id_mvp.recognition.nemotron import transcribe_nemotron
+        return transcribe_nemotron(wav_path)
     if engine == "gigaam":
         try:
             return GigaAmAsr().transcribe(wav_path)

@@ -156,8 +156,8 @@ def service_request(method, port, path, **kwargs):
     try:
         with httpx.Client(timeout=600,trust_env=False) as client:
             settings = get_settings()
-            base = {8001:settings.enrollment_service_url, 8002:settings.identification_service_url,
-                    8003:settings.transcription_service_url}[port]
+            base = {18101:settings.enrollment_service_url, 18102:settings.identification_service_url,
+                    18103:settings.transcription_service_url}[port]
             response = client.request(method,base.rstrip('/')+path,**kwargs)
         if response.status_code >= 400:
             if response.status_code == 400:
@@ -176,12 +176,13 @@ def service_request(method, port, path, **kwargs):
 
 @app.post('/api/jobs',status_code=202)
 async def create_job(operation: Literal['dialogue','transcribe','identify','enroll'] = Form(...),
-                     audio: UploadFile = File(...), speaker_id: str = Form(''), use_dictionary: bool = Form(True)):
+                     audio: UploadFile = File(...), speaker_id: str = Form(''), use_dictionary: bool = Form(True),
+                     diarization_engine: Literal['legacy','nemotron'] | None = Form(None)):
     """Purpose:
         Persist applicable recordings and submit bounded background recognition work.
 
     Ingress:
-        Multipart operation/audio, optional speaker ID, and dictionary preference.
+        Multipart operation/audio, optional speaker ID, dictionary preference and diarizer choice.
 
     Egress:
         An initial job snapshot with journal ID when applicable, or an actionable HTTP error.
@@ -190,8 +191,8 @@ async def create_job(operation: Literal['dialogue','transcribe','identify','enro
         raise HTTPException(422,'Введите имя говорящего, до 80 символов, без слешей.')
     data = await limited_upload(audio)
     filename = Path(audio.filename or 'audio.wav').name
-    port, path = {'dialogue':(8003,'/dialogue'),'transcribe':(8003,'/transcribe'),
-                  'identify':(8002,'/identify'),'enroll':(8001,f'/speakers/{quote(speaker_id.strip(),safe="")}/enroll')}[operation]
+    port, path = {'dialogue':(18103,'/dialogue'),'transcribe':(18103,'/transcribe'),
+                  'identify':(18102,'/identify'),'enroll':(18101,f'/speakers/{quote(speaker_id.strip(),safe="")}/enroll')}[operation]
     journal = journal_store() if operation in {'dialogue','transcribe'} else None
     try:
         entry = journal.create(operation,filename,data,use_dictionary) if journal else None
@@ -210,7 +211,8 @@ async def create_job(operation: Literal['dialogue','transcribe','identify','enro
         try:
             if entry:
                 journal.update(entry['id'],'running')
-            result = service_request('POST',port,path,files={'audio':(filename,data,'application/octet-stream')})
+            options = {'params': {'diarization_engine': diarization_engine}} if operation == 'dialogue' and diarization_engine else {}
+            result = service_request('POST',port,path,files={'audio':(filename,data,'application/octet-stream')}, **options)
             if operation in {'dialogue','transcribe'}:
                 result = apply_dictionary_result(result,enabled=use_dictionary,
                     entries=dictionary_store().list() if use_dictionary else [])
@@ -334,7 +336,7 @@ def speakers():
         A dictionary of speaker summaries; backend failures are translated into HTTP errors.
     """
     try:
-        return service_request('GET',8001,'/speakers')
+        return service_request('GET',18101,'/speakers')
     except RuntimeError as exc:
         raise HTTPException(503,str(exc)) from exc
 

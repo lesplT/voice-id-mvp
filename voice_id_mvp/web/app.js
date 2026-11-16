@@ -154,9 +154,11 @@ for (const form of $$('.audio-form')) {
     const operation = form.dataset.operation;
     const node = $('.job-status', form);
     busyForms.add(form.id);
-    const controls = $$('input,button', form);
+    const controls = $$('input,button,select', form);
     const data = new FormData(); data.append('operation', operation); data.append('audio', file);
     data.append('use_dictionary', String(Boolean($('input[name=use_dictionary]', form)?.checked)));
+    const diarizer = $('select[name=diarization_engine]', form)?.value;
+    if (diarizer) data.append('diarization_engine', diarizer);
     if (operation === 'enroll') {
       const entered = $('#speaker-name').value.trim();
       const existing = knownSpeakers.find(item => friendlyName(item.speaker_id).toLocaleLowerCase('ru') === entered.toLocaleLowerCase('ru'));
@@ -207,8 +209,14 @@ function download(filename, text, type) {
   document.body.append(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+function dialogueSpeaker(segment) {
+  const track = /^(?:speaker_)?(\d+)$/.exec(segment.diarization_label || '');
+  if (segment.speaker_id === 'UNKNOWN' && track) return `Участник ${Number(track[1])}`;
+  return friendlyName(segment.speaker_id);
+}
+
 function resultText(operation, result) {
-  if (operation === 'dialogue') return (result.segments || []).map(item => `[${timeLabel(item.start)}–${timeLabel(item.end)}] ${friendlyName(item.speaker_id)}: ${item.text || ''}`).join('\n');
+  if (operation === 'dialogue') return (result.segments || []).map(item => `[${timeLabel(item.start)}–${timeLabel(item.end)}] ${dialogueSpeaker(item)}: ${item.text || ''}`).join('\n');
   return result.text || '';
 }
 /**
@@ -252,10 +260,11 @@ function renderDialogue(result, view = 'dialogue', playerSelector = '#dialogue-f
   }
   const colors = new Map();
   for (const segment of segments) {
-    if (!colors.has(segment.speaker_id)) colors.set(segment.speaker_id, colors.size % 3);
+    const speakerKey = segment.speaker_id === 'UNKNOWN' ? (segment.diarization_label || 'UNKNOWN') : segment.speaker_id;
+    if (!colors.has(speakerKey)) colors.set(speakerKey, colors.size % 3);
     const turn = element('article', undefined, 'turn');
     const header = element('div', undefined, 'turn-header');
-    header.append(element('span', friendlyName(segment.speaker_id), `speaker-chip ${segment.speaker_id === 'UNKNOWN' ? 'unknown' : `speaker-${colors.get(segment.speaker_id)}`}`));
+    header.append(element('span', dialogueSpeaker(segment), `speaker-chip ${speakerKey === 'UNKNOWN' ? 'unknown' : `speaker-${colors.get(speakerKey)}`}`));
     header.append(button(`${timeLabel(segment.start)} – ${timeLabel(segment.end)} ↗`, async () => {
       const player = $(playerSelector);
       if (!player.src) return;
@@ -263,7 +272,8 @@ function renderDialogue(result, view = 'dialogue', playerSelector = '#dialogue-f
       try { await player.play(); } catch { notify('Нажмите кнопку воспроизведения на плеере.'); }
     }, 'turn-time'));
     turn.append(header, element('p', segment.text || 'Нет распознанного текста.'));
-    if (segment.speaker_id === 'UNKNOWN') turn.append(element('div', reasons[segment.reason] || 'Недостаточно данных, чтобы уверенно узнать голос.', 'turn-reason'));
+    if (segment.overlapping_speech) turn.append(element('div', 'Голоса накладываются: в тексте могут быть слова обоих участников.', 'turn-reason'));
+    else if (segment.speaker_id === 'UNKNOWN') turn.append(element('div', reasons[segment.reason] || 'Недостаточно данных, чтобы уверенно узнать голос.', 'turn-reason'));
     if (segment.dictionary_corrections?.length) turn.append(element('div', `Исправлено по словарю: ${segment.dictionary_corrections.length}`, 'turn-reason'));
     if (segment.original_text && segment.original_text !== segment.text) showOriginal(turn, segment.original_text);
     container.append(turn);

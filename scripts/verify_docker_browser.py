@@ -73,7 +73,7 @@ with tempfile.TemporaryDirectory(prefix='docker-ui-check-') as temporary:
             if recording:
                 page.request.delete('http://127.0.0.1:18000/api/journal/' + recording)
             if enrolled:
-                command = f"import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8001/speakers/{speaker}', method='DELETE'))"
+                command = f"import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:18101/speakers/{speaker}', method='DELETE'))"
                 subprocess.run(['docker','compose','exec','-T','enrollment','python','-c',command], cwd=ROOT, check=True)
             browser.close()
 report['status'] = 'passed'

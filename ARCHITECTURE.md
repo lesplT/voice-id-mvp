@@ -6,6 +6,7 @@ voice_id_mvp/
   audio/         # FFmpeg conversion, WAV operations, energy-based speech detection
   recognition/   # Pretrained ASR, embeddings, speaker decisions and turn boundaries
   application/   # Dialogue workflow, dictionary corrections and bounded jobs
+  benchmark/     # Separate batch application, dataset adapters and metric reports
   storage/       # Qdrant voice repository, SQLite dictionary and recording journal
   services/      # FastAPI entrypoints and HTTP upload/error adapters
   web/           # Browser interface (HTML, CSS, JavaScript)
@@ -37,7 +38,10 @@ Egress:
 
 `core.config.ROOT` still points to the repository root, not the new `core` directory.
 Model files, `.env`, static assets and persistent paths therefore keep their previous locations.
-HTTP entrypoints remain `voice_id_mvp.services.<service>_app:app`; URLs and response formats are unchanged.
+HTTP entrypoints remain `voice_id_mvp.services.<service>_app:app`. Native app ports
+are 18100–18103; Docker still exposes its workspace on host port 18000. The
+transcription service also exposes `POST /diarize` and accepts an optional
+`diarization_engine` for dialogue jobs.
 Old flat Python module paths were internal implementation details and are replaced rather than re-exported.
 
 ## One Compose file

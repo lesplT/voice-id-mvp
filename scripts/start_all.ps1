@@ -15,16 +15,16 @@ if (Test-Path ".env") {
 
 $QdrantMode = "local"
 $DockerAvailable = $false
-try {
-    docker info 2>$null | Out-Null
-    $DockerAvailable = ($LASTEXITCODE -eq 0)
-} catch {
-    $DockerAvailable = $false
-}
 # Do not silently switch an existing embedded voice database after Docker starts.
-if (Test-Path "data\qdrant_local\meta.json") {
-    $DockerAvailable = $false
+if ((Test-Path "data\qdrant_local\meta.json") -or $env:QDRANT_URL -eq "local") {
     Write-Host "Preserving existing embedded voice database for native Windows services."
+} elseif (Get-Command docker -ErrorAction SilentlyContinue) {
+    $probe = Start-Process -FilePath (Get-Command docker).Source -ArgumentList @("info") -WindowStyle Hidden -PassThru
+    if ($probe.WaitForExit(7000)) {
+        $DockerAvailable = ($probe.ExitCode -eq 0)
+    } else {
+        Stop-Process -Id $probe.Id -ErrorAction SilentlyContinue
+    }
 }
 if ($DockerAvailable) {
     docker compose --profile native up -d qdrant-native
@@ -38,10 +38,10 @@ if ($DockerAvailable) {
 
 New-Item -ItemType Directory -Force -Path "data\logs", "data\run" | Out-Null
 $Services = @(
-    @{ Name="workspace"; Module="voice_id_mvp.services.workspace_app:app"; Port=8000 },
-    @{ Name="enrollment"; Module="voice_id_mvp.services.enrollment_app:app"; Port=8001 },
-    @{ Name="identification"; Module="voice_id_mvp.services.identification_app:app"; Port=8002 },
-    @{ Name="transcription"; Module="voice_id_mvp.services.transcription_app:app"; Port=8003 }
+    @{ Name="workspace"; Module="voice_id_mvp.services.workspace_app:app"; Port=18100 },
+    @{ Name="enrollment"; Module="voice_id_mvp.services.enrollment_app:app"; Port=18101 },
+    @{ Name="identification"; Module="voice_id_mvp.services.identification_app:app"; Port=18102 },
+    @{ Name="transcription"; Module="voice_id_mvp.services.transcription_app:app"; Port=18103 }
 )
 $Pids = @{}
 foreach ($Service in $Services) {
@@ -77,4 +77,4 @@ foreach ($Service in $Services) {
     Write-Host "$($Service.Name): http://127.0.0.1:$($Service.Port) - OK"
 }
 Write-Host "Qdrant mode: $QdrantMode"
-Write-Host "Open the workspace: http://127.0.0.1:8000"
+Write-Host "Open the workspace: http://127.0.0.1:18100"

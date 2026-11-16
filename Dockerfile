@@ -12,7 +12,7 @@ RUN groupadd --gid 10001 voiceid && useradd --uid 10001 --gid voiceid --no-creat
 COPY --chown=voiceid:voiceid voice_id_mvp /app/voice_id_mvp
 COPY --chown=voiceid:voiceid scripts /app/scripts
 USER voiceid
-CMD ["python", "-m", "uvicorn", "voice_id_mvp.services.workspace_app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "voice_id_mvp.services.workspace_app:app", "--host", "0.0.0.0", "--port", "18100"]
 
 FROM runtime AS test
 COPY --chown=voiceid:voiceid tests /app/tests

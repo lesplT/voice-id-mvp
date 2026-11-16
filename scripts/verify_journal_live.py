@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 from voice_id_mvp.audio.processing import write_wav_slice
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--base-url', default='http://127.0.0.1:8000')
+parser.add_argument('--base-url', default='http://127.0.0.1:18100')
 parser.add_argument('--output-dir', type=Path, default=ROOT / 'data/journal-check')
 parser.add_argument('--real-dialogue', action='store_true', help='Save test4sound.mp3 in the live journal')
 parser.add_argument('--check-saved', action='store_true', help='Verify the previously saved record after restarting workspace')

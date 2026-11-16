@@ -79,7 +79,11 @@ def apply_dictionary_result(result: dict, enabled: bool=True, entries: list[dict
             segment['original_text']=original
             segment['text'],segment['dictionary_corrections']=correct_text(original,entries)
             all_changes.extend(segment['dictionary_corrections'])
-        output['text']='\n'.join(f"[{s['start']:.2f}–{s['end']:.2f}] {s['speaker_id']}: {s['text']}" for s in output['segments'])
+        output['text']='\n'.join(
+            f"[{s['start']:.2f}–{s['end']:.2f}] "
+            f"{s.get('diarization_label', 'UNKNOWN') if s['speaker_id'] == 'UNKNOWN' else s['speaker_id']}: {s['text']}"
+            for s in output['segments']
+        )
         output['dictionary_corrections']=all_changes
     else:
         output['text'],output['dictionary_corrections']=correct_text(output.get('text',''),entries)

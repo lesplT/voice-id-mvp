@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='voice-ui-verification-') as temporary:
             page.locator('#identify-form button[type=submit]').click()
             expect(page.locator('#identify-result strong')).to_have_text(test_speaker,timeout=180000)
             with httpx.Client(timeout=30,trust_env=False) as client:
-                deleted=client.delete(f'http://127.0.0.1:8001/speakers/{test_speaker}')
+                deleted=client.delete(f'http://127.0.0.1:18101/speakers/{test_speaker}')
                 deleted.raise_for_status()
             enrolled=False
             page.locator('#refresh-voices').click()
@@ -222,7 +222,7 @@ with tempfile.TemporaryDirectory(prefix='voice-ui-verification-') as temporary:
     finally:
         if enrolled:
             with httpx.Client(timeout=30,trust_env=False) as client:
-                client.delete(f'http://127.0.0.1:8001/speakers/{test_speaker}').raise_for_status()
+                client.delete(f'http://127.0.0.1:18101/speakers/{test_speaker}').raise_for_status()
         server.should_exit=True
         thread.join(30)
     report['status']='passed'

@@ -7,11 +7,11 @@ root = Path(__file__).resolve().parents[1]
 audio = root / "data/synthetic_russian_tts.wav"
 report = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "results": {}}
 with httpx.Client(timeout=180) as client:
-    for port in (8001, 8002, 8003):
+    for port in (18101, 18102, 18103):
         r = client.get(f"http://127.0.0.1:{port}/health")
         r.raise_for_status()
         report["results"][f"health_{port}"] = r.json()
-    for port, endpoint in [(8002, "identify"), (8003, "transcribe"), (8003, "dialogue")]:
+    for port, endpoint in [(18102, "identify"), (18103, "transcribe"), (18103, "dialogue")]:
         r = client.post(f"http://127.0.0.1:{port}/{endpoint}",
                         files={"audio": (audio.name, audio.read_bytes(), "audio/wav")})
         r.raise_for_status()

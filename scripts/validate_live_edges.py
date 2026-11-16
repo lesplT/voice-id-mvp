@@ -17,10 +17,10 @@ def silence(seconds):
 
 results = []
 for label, port, route, audio, status, reason in [
-    ("short", 8002, "identify", silence(.5), 200, "too_short"),
-    ("silence", 8002, "identify", silence(5), 200, "no_speech"),
-    ("silent_dialogue", 8003, "dialogue", silence(5), 200, "no_speech"),
-    ("invalid_audio", 8003, "transcribe", b"invalid", 400, None),
+    ("short", 18102, "identify", silence(.2), 200, "too_short"),
+    ("silence", 18102, "identify", silence(5), 200, "no_speech"),
+    ("silent_dialogue", 18103, "dialogue", silence(5), 200, "no_speech"),
+    ("invalid_audio", 18103, "transcribe", b"invalid", 400, None),
 ]:
     r = httpx.post(f"http://127.0.0.1:{port}/{route}",
                   files={"audio": ("edge.wav", audio, "audio/wav")}, timeout=120)

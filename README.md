@@ -21,13 +21,19 @@ docker compose up -d --build --wait --wait-timeout 1800
 Docker-интерфейс: **http://127.0.0.1:18000/**. Готовые модели подготавливаются автоматически,
 журнал и голосовая база сохраняются на диске. Код опубликован отдельно от личных данных.
 Инструкции запуска, переноса существующих данных и резервного копирования — [DOCKER.md](DOCKER.md).
-Команды ниже описывают прежний запуск непосредственно в Windows на порту 8000.
+Команды ниже описывают запуск непосредственно в Windows на порту 18100.
+
+Сравнение GigaAM, Vosk и Nemotron, проверка говорящих на ICSI и отдельное окно для
+прогона папок описаны в [BENCHMARK.md](BENCHMARK.md).
+Если вы вручную прописывали старые локальные порты в `.env`, обновите значения
+`ENROLLMENT_SERVICE_URL`, `IDENTIFICATION_SERVICE_URL` и `TRANSCRIPTION_SERVICE_URL`
+по примеру из [.env.example](.env.example).
 
 ## Единый интерфейс
 
-Откройте **http://127.0.0.1:8000/** — это основная страница, вместо трёх отдельных `/docs`.
+Откройте **http://127.0.0.1:18100/** — это основная страница, вместо трёх отдельных `/docs`.
 
-- **Диалог:** выберите запись разговора и нажмите «Разобрать диалог». Результат показан карточками с именем, временем и текстом. Нажмите время реплики, чтобы прослушать этот момент.
+- **Диалог:** выберите запись и, если нужно, способ разделения говорящих. Для варианта «NVIDIA NeMo / Nemotron» требуется [однократная установка модели](BENCHMARK.md#nvidia-nemotron-в-диалоге). Результат показан карточками со временем, текстом и именем или номером участника. Нажмите время реплики, чтобы прослушать этот момент.
 - **Голоса:** регистрация нового человека, список сохранённых голосов и проверка «Чей это голос?». Уже зарегистрированные `platon` и `prokhor` отображаются как Платон и Прохор. Запись с тем же именем дополняет образцы, а не удаляет их.
 - **Расшифровка:** текст записи без разделения по людям. Можно скопировать текст, сохранить TXT или нажать отдельную кнопку «Сохранить JSON».
 - **Словарь:** создайте слово, при необходимости укажите категорию и варианты ошибок — каждый с новой строки. Затем прикрепите аудиопримеры с правильной текстовой подписью. Примеры можно прослушать в карточке слова.
@@ -68,8 +74,8 @@ cd C:\Users\PC\voice-id-mvp
 без перекодирования), путь задаётся `JOURNAL_PATH`. Для резервной копии остановите сервисы
 и скопируйте **всю** эту папку. Она содержит личные сведения и исключена из исходного ZIP.
 Записи, сделанные до добавления журнала, автоматически не появятся: загрузите файлы снова.
-Автоматическое сохранение действует при загрузке через страницу/`POST /api/jobs` на 8000;
-прямые старые маршруты на 8003 не создают запись журнала.
+Автоматическое сохранение действует при загрузке через страницу/`POST /api/jobs` на 18100;
+прямые старые маршруты на 18103 не создают запись журнала.
 
 Кнопка «Удалить запись» после подтверждения **окончательно удаляет** эту запись, её
 исходное аудио и сохранённый результат. Это не архив и не корзина; отдельно сделанные копии
@@ -99,7 +105,7 @@ JSON содержит `original_text` и `dictionary_corrections` — списо
 «В архив» скрывает слово и выключает исправления, но сохраняет записи на диске.
 Восстановление архива через интерфейс пока не реализовано.
 
-Старые маршруты на 8001–8003 остаются доступны. Для прямого API можно включить словарь запросом
+Прямые маршруты доступны на 18101–18103. Для прямого API можно включить словарь запросом
 `POST /transcribe?use_dictionary=true` или `POST /dialogue?use_dictionary=true`.
 Без параметра старые endpoints по-прежнему возвращают исходный текст.
 Все сервисы слушают только localhost; пароль и публикация в интернет не добавлялись.
@@ -158,10 +164,10 @@ JSON содержит `original_text` и `dictionary_corrections` — списо
 
 | Сервис | Порт | Основные endpoints |
 |---|---:|---|
-| Интерфейс | 8000 | Главная страница, `/api/jobs`, `/api/speakers`, `/api/dictionary`, `/api/journal` |
-| Enrollment | 8001 | `POST /speakers/{speaker_id}/enroll`, `GET /speakers`, `DELETE /speakers/{speaker_id}` |
-| Identification | 8002 | `POST /identify` |
-| Transcription | 8003 | `POST /transcribe`, `POST /dialogue` |
+| Интерфейс | 18100 | Главная страница, `/api/jobs`, `/api/speakers`, `/api/dictionary`, `/api/journal` |
+| Enrollment | 18101 | `POST /speakers/{speaker_id}/enroll`, `GET /speakers`, `DELETE /speakers/{speaker_id}` |
+| Identification | 18102 | `POST /identify` |
+| Transcription | 18103 | `POST /transcribe`, `POST /dialogue`, `POST /diarize` |
 | Qdrant | 6333 | Cosine-хранилище embeddings и центроидов |
 
 Поток данных:
@@ -239,9 +245,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 Проверка:
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8001/health
-Invoke-RestMethod http://127.0.0.1:8002/health
-Invoke-RestMethod http://127.0.0.1:8003/health
+Invoke-RestMethod http://127.0.0.1:18101/health
+Invoke-RestMethod http://127.0.0.1:18102/health
+Invoke-RestMethod http://127.0.0.1:18103/health
 ```
 
 Остановка только процессов этого проекта:
@@ -257,35 +263,35 @@ Invoke-RestMethod http://127.0.0.1:8003/health
 Регистрация нескольких референсов одного человека выполняется повторным вызовом endpoint:
 
 ```powershell
-curl.exe -X POST -F "audio=@C:\audio\platon-1.m4a" http://127.0.0.1:8001/speakers/platon/enroll
-curl.exe -X POST -F "audio=@C:\audio\platon-2.wav" http://127.0.0.1:8001/speakers/platon/enroll
-curl.exe http://127.0.0.1:8001/speakers
+curl.exe -X POST -F "audio=@C:\audio\platon-1.m4a" http://127.0.0.1:18101/speakers/platon/enroll
+curl.exe -X POST -F "audio=@C:\audio\platon-2.wav" http://127.0.0.1:18101/speakers/platon/enroll
+curl.exe http://127.0.0.1:18101/speakers
 ```
 
 Идентификация:
 
 ```powershell
-curl.exe -X POST -F "audio=@C:\audio\unknown.wav" "http://127.0.0.1:8002/identify?top_k=20"
+curl.exe -X POST -F "audio=@C:\audio\unknown.wav" "http://127.0.0.1:18102/identify?top_k=20"
 ```
 
 Расшифровка и диалог:
 
 ```powershell
-curl.exe -X POST -F "audio=@C:\audio\meeting.m4a" http://127.0.0.1:8003/transcribe
-curl.exe -X POST -F "audio=@C:\audio\meeting.m4a" http://127.0.0.1:8003/dialogue
+curl.exe -X POST -F "audio=@C:\audio\meeting.m4a" http://127.0.0.1:18103/transcribe
+curl.exe -X POST -F "audio=@C:\audio\meeting.m4a" http://127.0.0.1:18103/dialogue
 ```
 
 Удаление всех reference vectors и centroids speaker:
 
 ```powershell
-curl.exe -X DELETE http://127.0.0.1:8001/speakers/platon
+curl.exe -X DELETE http://127.0.0.1:18101/speakers/platon
 ```
 
 Swagger UI:
 
-- http://127.0.0.1:8001/docs
-- http://127.0.0.1:8002/docs
-- http://127.0.0.1:8003/docs
+- http://127.0.0.1:18101/docs
+- http://127.0.0.1:18102/docs
+- http://127.0.0.1:18103/docs
 
 ## ASR: GigaAM-v3 и Vosk fallback
 
@@ -320,7 +326,7 @@ Swagger UI:
 Результаты:
 
 - `pytest`: 11 тестов пройдены; покрыты L2/centroid, top-K aggregation, `below_threshold`, `ambiguous`, `too_short`, `no_speech`, merge dialogue и health endpoints. Единственное предупреждение — deprecation внутри Starlette TestClient.
-- health: 200 OK на портах 8001, 8002 и 8003.
+- health: 200 OK на тогдашних портах 8001, 8002 и 8003.
 - синтетический smoke: все ключевые endpoints вернули 200; enrollment извлёк 4 embeddings и сохранил 4 references + 1 centroid; идентификация той же записи вернула `synthetic_tts`, score 1.0, 5 hits.
 - Vosk ASR вернул русский текст; `/dialogue` создал 4 сегмента, а сегмент 0.87 секунды оставил `UNKNOWN` с причиной `too_short`.
 - Полный машинный результат smoke сохранён в `data\smoke-results.json`.
@@ -338,7 +344,7 @@ Swagger UI:
 Результаты обновлённого прогона:
 
 - 15 автоматических тестов пройдены, включая защиту от одного случайного высокого совпадения и разбиение длинной записи для GigaAM.
-- Три сервиса реально запущены и доступны на 127.0.0.1:8001–8003.
+- Три сервиса ответили на тогдашних портах 8001–8003.
 - `/identify` той же синтетической записи: `synthetic_tts`, score 0.9308, четыре reference hits.
 - `/transcribe` вернул `engine=gigaam` и непустой русский текст.
 - `/dialogue` вернул четыре сегмента с текстом GigaAM; короткое приветствие осталось `UNKNOWN/too_short`.
@@ -432,7 +438,7 @@ GigaAM по-прежнему устанавливается отдельно ч�
 Повторно выполните `.\scripts\download_models.ps1`.
 
 **Порт занят**  
-Проверьте `Get-NetTCPConnection -LocalPort 8001,8002,8003,6333 -State Listen`. Не убивайте неизвестный процесс; измените порт запуска либо остановите только известный сервис.
+Проверьте `Get-NetTCPConnection -LocalPort 18101,18102,18103,6333 -State Listen`. Не убивайте неизвестный процесс; измените порт запуска либо остановите только известный сервис.
 
 **GigaAM очень медленный или не хватает памяти**  
 Верните `ASR_ENGINE=vosk`. Модель Vosk уже установлена и не требует GPU.

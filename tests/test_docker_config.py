@@ -16,9 +16,9 @@ def test_gateway_uses_configured_service_address(monkeypatch):
             return SimpleNamespace(status_code=200, json=lambda:{'ok':True})
     monkeypatch.setattr(workspace_app.httpx, 'Client', Client)
     monkeypatch.setattr(workspace_app, 'get_settings', lambda:SimpleNamespace(
-        enrollment_service_url='http://enrollment:8001',
-        identification_service_url='http://identification:8002',
-        transcription_service_url='http://transcription:8003/'))
-    assert workspace_app.service_request('GET',8001,'/speakers') == {'ok':True}
-    assert workspace_app.service_request('POST',8003,'/dialogue') == {'ok':True}
-    assert observed == ['http://enrollment:8001/speakers','http://transcription:8003/dialogue']
+        enrollment_service_url='http://enrollment:18101',
+        identification_service_url='http://identification:18102',
+        transcription_service_url='http://transcription:18103/'))
+    assert workspace_app.service_request('GET',18101,'/speakers') == {'ok':True}
+    assert workspace_app.service_request('POST',18103,'/dialogue') == {'ok':True}
+    assert observed == ['http://enrollment:18101/speakers','http://transcription:18103/dialogue']

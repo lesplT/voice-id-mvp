@@ -30,24 +30,24 @@ def main() -> int:
     results = {
         "health": {
             str(port): request("GET", f"http://127.0.0.1:{port}/health")
-            for port in (8001, 8002, 8003)
+            for port in (18101, 18102, 18103)
         }
     }
-    request("DELETE", "http://127.0.0.1:8001/speakers/synthetic_tts")
+    request("DELETE", "http://127.0.0.1:18101/speakers/synthetic_tts")
     results["enroll"] = request(
         "POST",
-        "http://127.0.0.1:8001/speakers/synthetic_tts/enroll",
+        "http://127.0.0.1:18101/speakers/synthetic_tts/enroll",
         files=audio_file(),
     )
-    results["speakers"] = request("GET", "http://127.0.0.1:8001/speakers")
+    results["speakers"] = request("GET", "http://127.0.0.1:18101/speakers")
     results["identify"] = request(
-        "POST", "http://127.0.0.1:8002/identify", files=audio_file()
+        "POST", "http://127.0.0.1:18102/identify", files=audio_file()
     )
     results["transcribe"] = request(
-        "POST", "http://127.0.0.1:8003/transcribe", files=audio_file()
+        "POST", "http://127.0.0.1:18103/transcribe", files=audio_file()
     )
     results["dialogue"] = request(
-        "POST", "http://127.0.0.1:8003/dialogue", files=audio_file()
+        "POST", "http://127.0.0.1:18103/dialogue", files=audio_file()
     )
     output = ROOT / "data/smoke-results.json"
     output.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")

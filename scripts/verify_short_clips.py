@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory(prefix='short-voice-check-') as tmp, httpx.Clie
     def check(source,start,duration,expected):
         write_wav_slice(source,destination,start,start+duration)
         with destination.open('rb') as audio:
-            r=client.post('http://127.0.0.1:8002/identify',files={'audio':('probe.wav',audio,'audio/wav')})
+            r=client.post('http://127.0.0.1:18102/identify',files={'audio':('probe.wav',audio,'audio/wav')})
         r.raise_for_status()
         rows.append({'start':start,'duration':duration,'expected':expected,**r.json()})
     source=ROOT/'data/short-evaluation/dialogue.wav'

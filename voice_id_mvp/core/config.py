@@ -24,6 +24,9 @@ class Settings(BaseSettings):
 
     asr_engine: str = "gigaam"
     speaker_engine: Literal["ecapa", "vosk"] = "ecapa"
+    diarization_engine: Literal["legacy", "nemotron"] = "legacy"
+    nemo_speech_bin: str = "nemo-speech"
+    nemo_device: str = "cpu"
     ecapa_model_path: Path = ROOT / "models/ecapa/embedding_model.ckpt"
     asr_fallback_to_vosk: bool = True
     gigaam_model_name: str = "v3_e2e_rnnt"
@@ -36,9 +39,9 @@ class Settings(BaseSettings):
     qdrant_collection: str = "voice_references_ecapa_v1"
     dictionary_path: Path = ROOT / "data/dictionary"
     journal_path: Path = ROOT / "data/journal"
-    enrollment_service_url: str = "http://127.0.0.1:8001"
-    identification_service_url: str = "http://127.0.0.1:8002"
-    transcription_service_url: str = "http://127.0.0.1:8003"
+    enrollment_service_url: str = "http://127.0.0.1:18101"
+    identification_service_url: str = "http://127.0.0.1:18102"
+    transcription_service_url: str = "http://127.0.0.1:18103"
     voice_id_threshold: float = 0.45
     voice_id_margin: float = 0.12
     voice_id_min_seconds: float = 0.35

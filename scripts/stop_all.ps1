@@ -29,4 +29,6 @@ if (Test-Path $State) {
         }
     }
 }
-docker compose --profile native stop qdrant-native *> $null
+if ($Pids.qdrant_mode -eq "docker") {
+    docker compose --profile native stop qdrant-native *> $null
+}

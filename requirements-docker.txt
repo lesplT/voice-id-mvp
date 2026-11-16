@@ -10,5 +10,6 @@ numpy==2.2.6
 httpx==0.28.1
 imageio-ffmpeg==0.6.0
 speechbrain==1.0.3
+scipy==1.15.3
 pytest==8.3.5
 gigaam @ https://codeload.github.com/salute-developers/GigaAM/tar.gz/7447938d791c4f3e643386ee22c33777004293a5

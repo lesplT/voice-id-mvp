@@ -10,3 +10,4 @@
 .journal-row{padding:18px 0;border-bottom:1px solid var(--line);min-width:0}.journal-row small{display:block;margin-top:8px;overflow-wrap:anywhere}.journal-row p{margin:8px 0 0;overflow-wrap:anywhere;white-space:pre-wrap}.journal-open{width:100%;text-align:left;overflow-wrap:anywhere;justify-content:flex-start}.journal-grid{grid-template-columns:minmax(260px,340px) minmax(0,1fr)}#journal-title{overflow-wrap:anywhere}#journal-player{width:100%;margin:15px 0}#journal-pages{margin-top:15px;padding-bottom:0;border:0}.journal-grid .export-bar a{text-decoration:none}
 @media(max-width:850px){.tabs{flex-wrap:wrap}.tab{flex:1 0 16%}.journal-grid{grid-template-columns:1fr 1.2fr}}
 @media(max-width:620px){.journal-grid{grid-template-columns:1fr}.tab{flex:1 0 28%}}
+.field select{display:block;width:100%;margin-top:9px;padding:11px 12px;border:1px solid #d9ded4;border-radius:8px;color:var(--ink);background:#fff;font:inherit}

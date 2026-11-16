@@ -30,6 +30,13 @@
           <div class="card-heading"><span class="step">1</span><h2>Запись разговора</h2></div>
           <label class="upload-zone" for="dialogue-file"><span class="upload-icon" aria-hidden="true">↥</span><strong>Перетащите аудиозапись</strong><span>или выберите файл с ноутбука</span><input id="dialogue-file" name="audio" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm" required><small>MP3, WAV и другие аудиоформаты · до 100 МБ</small></label>
           <div class="file-preview" hidden><div class="file-info"></div><audio controls preload="metadata" aria-label="Прослушать выбранный диалог"></audio></div>
+          <label class="field">Как разделить говорящих
+            <select name="diarization_engine">
+              <option value="">По настройке проекта</option>
+              <option value="legacy">Текущий метод ECAPA / Vosk</option>
+              <option value="nemotron">NVIDIA NeMo / Nemotron</option>
+            </select>
+          </label>
           <label class="check-label"><input type="checkbox" name="use_dictionary" checked><span>Использовать словарь<small>Только заданные вами исправления текста</small></span></label>
           <button class="button primary" type="submit">Разобрать диалог <span aria-hidden="true">→</span></button>
           <div class="job-status" role="status" aria-live="polite" hidden></div>
